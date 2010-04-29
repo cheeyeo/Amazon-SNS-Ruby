@@ -4,6 +4,7 @@ require 'logger'
 require "topic"
 require "helpers"
 require "request"
+require "exceptions"
 
 class AmazeSNS
   
@@ -32,7 +33,7 @@ class AmazeSNS
   end
   
   #method to refresh the topics hash so as to cut down calls to SNS
-  def self.refresh_list
+  def self.refresh_list(reload={})
     @results = self.list_topics
     @results.each do|t|
       label = t["TopicArn"].split(':').last.to_s
