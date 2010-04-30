@@ -18,7 +18,7 @@ class Request
   def process
     #p "inside process method of request"
     query_string = canonical_querystring(@params)
-    #p "QUERY STRING: #{query_string}"
+    p "QUERY STRING: #{query_string}"
             
 string_to_sign = "GET
 #{AmazeSNS.host}

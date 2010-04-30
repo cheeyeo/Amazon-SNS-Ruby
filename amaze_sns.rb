@@ -68,5 +68,10 @@ class AmazeSNS
     return arr
   end
   
+  # grabs all the subscriptions
+  def self.subscriptions
+    
+  end
+  
   
 end

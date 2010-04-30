@@ -1,12 +1,23 @@
+require "rubygems"
 require "request"
 require "exceptions"
-
+require "hash_mapper"
+require 'erb'
 # need to find a way to cache the results in a class wide cache
 # 
 
+require "one_level"
+
 class Topic
+  #extend HashMapper
+  
+  # map from('/Owner'), to('/id')
+  # map from('/Protocol'), to('/properties/protocol')
+  
+  
   attr_accessor :topic, :arn, :attrs
   
+
   def initialize(topic, arn='')
     @topic = topic
     @arn = arn
@@ -124,15 +135,100 @@ class Topic
   end
   
   def unsubscribe(id)
-    raise InvalidOptions unless ( !(id.empty?) && opts.instance_of?(String) )
+    raise InvalidOptions unless ( !(id.empty?) && id.instance_of?(String) )
+    
+    params = {
+      'SubscriptionArn' => "#{id}",
+      'Action' => 'Unsubscribe',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    response = make_request(params)
+    p response.inspect
     
   end
   
   
-  # grabs list of subscriptions for this topic
+  # grabs list of subscriptions for this topic only
   def subscriptions
+    params = {
+      'TopicArn' => "#{arn}",
+      'Action' => 'ListSubscriptionsByTopic',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    response = make_request(params)
+    p response.inspect
+    arr = response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member']
+    
+    p "ARR: #{arr.inspect}"
+    #nh = OneLevel.normalize(arr[0])
+    
+    #below only works if there is more than 1 subscription !!
+    # need to check if arr is a hash or array first
+    
+    #temp fix for now
+    nh = arr.inject({}) do |h,v|
+      key = v["SubscriptionArn"]
+      value = v
+      h[key] = value
+      h
+    end
+    
+    
+    puts "NEW HASH IS: #{nh.inspect}"
+  end
+  
+  def add_permission(opts)
     
   end
+  
+  
+  def remove_permission(opts)
+    
+  end
+  
+  
+  def publish!(msg, subject='')
+    p "INSIDE PUBLISH METHOD"
+    raise InvalidOptions unless ( !(msg.empty?) && msg.instance_of?(String) )
+    
+    # html emails not working for now need to look into api in more detail
+    # message = <<-MESSAGE_END
+    #     MIME-Version: 1.0
+    #     Content-type: text/html
+    #     Subject: SMTP e-mail test
+    # 
+    #     This is an e-mail message to be sent in HTML format
+    # 
+    #     <b>This is HTML message.</b>
+    #     <h1>This is headline.</h1>
+    #     MESSAGE_END
+    
+    # make subject optional and only for email protocol
+    
+    params = {
+      'Subject' => "My First Message",
+      'TopicArn' => "#{arn}",
+      "Message" => "#{msg}",
+      'Action' => 'Publish',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    req = Request.new(params)
+    response = req.process
+    p response.inspect
+  end
+  
   
   # helper method to make calls to SNS by building a request object and executing it
   # returns the response
