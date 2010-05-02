@@ -1,27 +1,30 @@
 require "rubygems"
 require "request"
 require "exceptions"
-require "hash_mapper"
-require 'erb'
-# need to find a way to cache the results in a class wide cache
-# 
+require "eventmachine"
 
-require "one_level"
 
 class Topic
-  #extend HashMapper
-  
-  # map from('/Owner'), to('/id')
-  # map from('/Protocol'), to('/properties/protocol')
-  
   
   attr_accessor :topic, :arn, :attrs
-  
 
   def initialize(topic, arn='')
     @topic = topic
     @arn = arn
     @attrs ||= {}
+  end
+  
+  def generate_request(params,&blk)
+    req_options={}
+    req_options[:on_success] = blk if blk
+    Request.new(params, req_options).process
+  end
+  
+  # for running th EM loop w/o repetitions
+  def reactor(&blk)
+    EM.run do
+      instance_eval(&blk)
+    end
   end
   
   def create
@@ -36,14 +39,16 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
      }
      
-     req = Request.new(params)
-     response = req.process
-     # response will be a hash so deal with it accordingly here ...
-     @arn = response["CreateTopicResponse"]["CreateTopicResult"]["TopicArn"]
-     
-     # no need to call refresh list - just add self into the hash
-     AmazeSNS.topics[@topic.to_s] = self
-     # AmazeSNS.refresh_list
+     reactor{
+       generate_request(params) do |response|
+         parsed_response = Crack::XML.parse(response.response)
+         @arn = parsed_response["CreateTopicResponse"]["CreateTopicResult"]["TopicArn"]
+         AmazeSNS.topics[@topic.to_s] = self # add to hash
+         AmazeSNS.topics.rehash
+         EM.stop
+       end
+     }
+    
   end
   
   # delete topic
@@ -59,15 +64,17 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
      }
     
-     req = Request.new(params)
-     response = req.process
-     
-     p "RESPONSE FROM DELETE: #{response.inspect}"
+     reactor{
+       generate_request(params) do |response|
+         parsed_response = Crack::XML.parse(response.response)
+         #p "RESPONSE FROM DELETE: #{parsed_response.inspect}"
+         # update @topics hash in main class
+         AmazeSNS.topics.delete("#{@topic}")
+         AmazeSNS.topics.rehash
+         EM.stop
+        end
+      }
     
-    # update @topics hash in main class
-    AmazeSNS.topics.delete("#{@topic}")
-    AmazeSNS.topics.rehash
-    # AmazeSNS.refresh_list
   end
   
   # get attributes for topic from remote sns server
@@ -87,31 +94,17 @@ class Topic
       'Timestamp' => Time.now.iso8601,
       'AWSAccessKeyId' => AmazeSNS.akey
      }
-    
-     #req = Request.new(params)
-     #response = req.process 
+ 
+     reactor{
+       generate_request(params) do |response|
+         parsed_response = Crack::XML.parse(response.response)
+         p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
+         res = parsed_response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
+         make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
+         EM.stop
+        end
+     }
      
-     response = make_request(params)
-     
-     # {"entry"=>[
-     #        {"value"=>"365155214602", "key"=>"Owner"}, 
-     #        {"value"=>"{\n\"Version\":\"2008-10-17\",\"Id\":\"us-east-1/365155214602/cars__default_policy_ID\",
-              #            \"Statement\" : [{\"Effect\":\"Allow\",\"Sid\":\"us-east-1/365155214602/cars__default_statement_ID\",
-    #          \"Principal\" : {\"AWS\": \"*\"},
-    #          \"Action\":[\"SNS:GetTopicAttributes\",\"SNS:SetTopicAttributes\",\"SNS:AddPermission\",\"SNS:RemovePermission\",\"SNS:DeleteTopic\",\"SNS:Subscribe\",\"SNS:ListSubscriptionsByTopic\",\"SNS:Publish\",\"SNS:Receive\"],
-    #          \"Resource\":\"arn:aws:sns:us-east-1:365155214602:cars\",
-    #          \"Condition\" : {\"StringLike\" : {\"AWS:SourceArn\": \"arn:aws:*:*:365155214602:*\"}}
-    #          } end inner value
-    #          ] end statement
-    #          } end outer value ", "key"=>"Policy"}, 
-     #        {"value"=>"arn:aws:sns:us-east-1:365155214602:cars", "key"=>"TopicArn"}
-     #       ]
-     #  }
-     
-     
-     res = response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
-     #p res
-     make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
   end
   
   # subscribe method
@@ -129,9 +122,17 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
     }
     
-    response = make_request(params)
-    p response.inspect
-    res = response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        #p "#{parsed_response.inspect}"
+        res = parsed_response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
+        return res
+        #p "SUBSCRIPTION RESULT: #{res}"
+        EM.stop
+      end
+    }
+    
   end
   
   def unsubscribe(id)
@@ -146,9 +147,15 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
     }
     
-    response = make_request(params)
-    p response.inspect
-    
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        res = parsed_response['UnsubscribeResponse']['ResponseMetadata']['RequestId']
+        #p "UN-SUBSCRIPTION RESULT: #{res}"
+        return res
+        EM.stop
+      end
+    }
   end
   
   
@@ -163,26 +170,36 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
     }
     
-    response = make_request(params)
-    p response.inspect
-    arr = response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member']
-    
-    p "ARR: #{arr.inspect}"
-    #nh = OneLevel.normalize(arr[0])
-    
-    #below only works if there is more than 1 subscription !!
-    # need to check if arr is a hash or array first
-    
-    #temp fix for now
-    nh = arr.inject({}) do |h,v|
-      key = v["SubscriptionArn"]
-      value = v
-      h[key] = value
-      h
-    end
-    
-    
-    puts "NEW HASH IS: #{nh.inspect}"
+    reactor{
+       generate_request(params) do |response|
+         #p "response: #{response.response}"
+         parsed_response = Crack::XML.parse(response.response)
+         #p "parsed response: #{parsed_response.inspect}"
+         arr = parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member'] unless (parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions'].nil?)
+                 
+         p "ARR: #{arr.inspect}"
+         if !(arr.nil?) && (arr.instance_of?(Array))
+           #temp fix for now
+           nh = arr.inject({}) do |h,v|
+             key = v["SubscriptionArn"].to_s
+             value = v
+             h[key.to_s] = value
+             h
+           end
+         elsif !(arr.nil?) && (arr.instance_of?(Hash))
+           # to deal with one subscription issue
+           nh = {}
+           key = arr["SubscriptionArn"]
+           arr.delete("SubscriptionArn")
+           nh[key.to_s] = arr
+         end
+         
+         #puts "NEW HASH IS: #{nh.inspect}"
+         return nh
+         EM.stop
+       end
+    }
+
   end
   
   def add_permission(opts)
@@ -198,21 +215,7 @@ class Topic
   def publish!(msg, subject='')
     p "INSIDE PUBLISH METHOD"
     raise InvalidOptions unless ( !(msg.empty?) && msg.instance_of?(String) )
-    
-    # html emails not working for now need to look into api in more detail
-    # message = <<-MESSAGE_END
-    #     MIME-Version: 1.0
-    #     Content-type: text/html
-    #     Subject: SMTP e-mail test
-    # 
-    #     This is an e-mail message to be sent in HTML format
-    # 
-    #     <b>This is HTML message.</b>
-    #     <h1>This is headline.</h1>
-    #     MESSAGE_END
-    
-    # make subject optional and only for email protocol
-    
+  
     params = {
       'Subject' => "My First Message",
       'TopicArn' => "#{arn}",
@@ -224,20 +227,18 @@ class Topic
       'AWSAccessKeyId' => AmazeSNS.akey
     }
     
-    req = Request.new(params)
-    response = req.process
-    p response.inspect
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        res = parsed_response['PublishResponse']['PublishResult']['MessageId']
+        return res
+        EM.stop
+      end
+    }
+
   end
   
-  
-  # helper method to make calls to SNS by building a request object and executing it
-  # returns the response
-  def make_request(params)
-    req = Request.new(params)
-    response = req.process
-    response
-  end
-  
+    
   def make_hash(arr)
     hash = arr.inject({}) do |h, v|
       key = v["key"].to_s
