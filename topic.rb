@@ -107,6 +107,10 @@ class Topic
      
   end
   
+  def set_attrs(opts)
+    
+  end
+  
   # subscribe method
   def subscribe(opts)
     raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
@@ -202,13 +206,11 @@ class Topic
 
   end
   
-  def add_permission(opts)
-    
+  
+  def add_permission(opts)   
   end
   
-  
   def remove_permission(opts)
-    
   end
   
   

@@ -29,7 +29,7 @@ class AmazeSNS
   self.topics ||= {}
   
   def self.[](topic)
-    raise ArgumentError unless (@skey && @akey)
+    raise CredentialError unless (!(@skey.empty?) && !(@akey.empty?))
     @topics[topic.to_s] = Topic.new(topic) unless @topics.has_key?(topic)
     @topics[topic.to_s]
   end
@@ -41,16 +41,15 @@ class AmazeSNS
    
     EM.run do
       self.list_topics do |response|
-        p "INSIDE EM LOOP"
+        #p "INSIDE EM LOOP"
         parsed_response = Crack::XML.parse(response.response)
-        p "PARSED RESPONSE: #{parsed_response}"
+        #p "PARSED RESPONSE: #{parsed_response.inspect}"
         @results = parsed_response["ListTopicsResponse"]["ListTopicsResult"]["Topics"]["member"]
         EM.stop
       end
     end # end EM loop
    
-    #@results = self.list_topics
-    
+
     @results.each do|t|
       label = t["TopicArn"].split(':').last.to_s
       unless @topics.has_key?(label)
