@@ -1,7 +1,12 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
 
 describe AmazeSNS do
-
+  
+  before(:each) do
+    EventMachine::MockHttpRequest.reset_counts!
+    EventMachine::MockHttpRequest.reset_registry!
+  end
+  
   describe 'in its initial state' do
   
     it "should return the preconfigured host endpoint" do
@@ -37,31 +42,63 @@ describe AmazeSNS do
     
   end
  
-  describe 'calling refresh_list' do
+  describe 'calling list_topics' do
     before do
-       AmazeSNS.akey = 'xxxxx'
-       AmazeSNS.skey = 'xxxxx'
-     
-      # @hash = {}
-      #      @hash["topic_1"] = Topic.new('topic_1', 'arn:aws:sns:us-east-1:365155214602:topic_1')
-      #      @hash["topic_2"] = Topic.new('topic_2', 'arn:aws:sns:us-east-1:365155214602:topic_2')
-      #      @hash["topic_3"] = Topic.new('topic_3', 'arn:aws:sns:us-east-1:365155214602:topic_3')
-      #      #AmazeSNS.stub!(:refresh_list).and_return(@hash)
-      #      AmazeSNS.stub!(:list_topics).and_return(@hash)
-      #      EM.stub!(:run).and_return(true)
+      AmazeSNS.akey = '12346'
+      AmazeSNS.skey =  '123456'
+      
+      @response_stub = stub()
+      @response_stub.stub!(:errback)
+      #@response_stub.stub!(:callback)
+       @on_error = Proc.new {|http| p "CALLED"}
+      @response_stub.stub!(:callback)
+      
+      @params = {
+        'Action' => 'ListTopics',
+        'SignatureMethod' => 'HmacSHA256',
+        'SignatureVersion' => 2,
+        'Timestamp' => Time.now.iso8601,
+        'AWSAccessKeyId' => AmazeSNS.akey
+      }
+      
+      @query_string = canonical_querystring(@params)
+      
+string_to_sign = "GET
+#{AmazeSNS.host}
+/
+#{@query_string}"
+
+       hmac = HMAC::SHA256.new(AmazeSNS.skey)
+       hmac.update( string_to_sign )
+       signature = Base64.encode64(hmac.digest).chomp
+
+       @params['Signature'] = signature
+       @querystring2 = @params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&')
     end
     
-    it 'should return a hash of topics' do
-      AmazeSNS.refresh_list
-      AmazeSNS.topics.empty?.should == false
+    it 'should make a call to em-http-request' do
+      request = mock(:get => @response_stub)
+      EventMachine::MockHttpRequest.should_receive(:new).with("http://#{AmazeSNS.host}/?#{@querystring2}").and_return(request)
+      AmazeSNS.send(:list_topics)
     end
     
-    it 'should contain a list of topics in the hash' do
-      AmazeSNS.topics.values.first.should be_kind_of(Topic)
-      AmazeSNS.topics.values.first.topic.should == "29steps_products"
+    it 'should return xml of topics' do
+      EventMachine::MockHttpRequest.register("http://#{AmazeSNS.host}/?#{@querystring2}", "GET", "test", fake_response)
+      
+      EM.run {
+        AmazeSNS.list_topics do |response|
+          response.response.should == fake_response # cannot get the string to match up due to whitespace??
+          EM.stop
+        end
+      }
     end
     
   end
+  
+  after do
+    
+  end
+  
  
 end # end outer describe
 

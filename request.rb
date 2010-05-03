@@ -55,13 +55,10 @@ string_to_sign = "GET
       #p params.inspect
 
       querystring2 = params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&') # order doesn't matter for the actual request
-      #p querystring2.inspect 
-      #response = HttpClient.get "#{AmazeSNS.host}?#{querystring2}"
       
-       @httpresponse =  http_class.new("http://#{AmazeSNS.host}/?#{querystring2}").send(:get)
-        
-       @httpresponse.callback{ success_callback }   
-       @httpresponse.errback{ error_callback }
+      @httpresponse =  http_class.new("http://#{AmazeSNS.host}/?#{querystring2}").send(:get)
+      @httpresponse.callback{ success_callback }   
+      @httpresponse.errback{ error_callback }
       nil
   end
   
@@ -89,9 +86,6 @@ string_to_sign = "GET
   
   def error_callback
     EventMachine.stop
-    # check for response codes here and issue exceptions accordingly
-    #p "INSIDE ERROR CALLBACK"
-    #p "STATUS CODE #{@httpresponse.response_header.status}"
     raise AmazeSNSRuntimeError.new("A runtime error has occured: status code: #{@httpresponse.response_header.status}")
   end
   
