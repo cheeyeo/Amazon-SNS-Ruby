@@ -10,9 +10,9 @@ begin
     gemspec.email = "info@29steps.co.uk"
     gemspec.homepage = "http://github.com/cheeyeo/Amazon-SNS-Ruby"
     gemspec.authors = ["Chee Yeo", "29 Steps UK"]
-    gemspec.add_dependency "eventmachine"
-    gemspec.add_dependency "em-http"
-    gemspec.add_dependency "crack"
+    gemspec.add_dependency('eventmachine', '>= 0.12.9')
+    gemspec.add_dependency("em-http-request", '>=0.2.8')
+    gemspec.add_dependency("crack", '>=0.1.6')
     #gemspec.add_dependency "http_client"
     gemspec.add_development_dependency "rspec", ">= 1.2.9"
   end

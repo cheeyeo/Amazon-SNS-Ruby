@@ -23,7 +23,8 @@ AmazeSNS.logger = my_logger # set a logger for the response
 
 Dependencies
 ---------------
-Require the HttpClient gem from SevenWires and CrackXML gem
+Require the CrackXML gem for parsing XML responses back from SNS and also EventMachine
+and EM-Http request gem
 
 Copyright
 ---------
