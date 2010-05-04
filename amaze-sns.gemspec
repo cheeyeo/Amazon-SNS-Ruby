@@ -17,7 +17,10 @@ Gem::Specification.new do |s|
   ]
   s.files = [
     "README.md",
+     "Rakefile",
      "VERSION",
+     "amaze-sns-0.1.0.gem",
+     "amaze-sns.gemspec",
      "amaze_sns.rb",
      "exceptions.rb",
      "helpers.rb",
