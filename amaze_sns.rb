@@ -41,8 +41,8 @@ class AmazeSNS
    
     EM.run do
       self.list_topics do |response|
-        p "INSIDE EM LOOP"
-        p "RAW RESPONSE: #{response.response}"
+        #p "INSIDE EM LOOP"
+        #p "RAW RESPONSE: #{response.response}"
         parsed_response = Crack::XML.parse(response.response)
         #p "PARSED RESPONSE: #{parsed_response.inspect}"
         @results = parsed_response["ListTopicsResponse"]["ListTopicsResult"]["Topics"]["member"]
