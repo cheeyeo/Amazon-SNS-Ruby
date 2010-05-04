@@ -5,10 +5,6 @@ Introduction
 ---------
 A Ruby gem for use with the Amazon Simple Notification service (http://aws.amazon.com/sns/).
 
-It is currently still in development and to wrap it within a gem with more tests
-
-
-
 Usage
 ---------------
 
