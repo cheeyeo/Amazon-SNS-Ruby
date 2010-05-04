@@ -13,7 +13,7 @@ begin
     gemspec.add_dependency "eventmachine"
     gemspec.add_dependency "em-http"
     gemspec.add_dependency "crack"
-    gemspec.add_dependency "http_client"
+    #gemspec.add_dependency "http_client"
     gemspec.add_development_dependency "rspec", ">= 1.2.9"
   end
   Jeweler::GemcutterTasks.new

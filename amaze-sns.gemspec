@@ -19,7 +19,6 @@ Gem::Specification.new do |s|
     "README.md",
      "Rakefile",
      "VERSION",
-     "amaze-sns-0.1.0.gem",
      "amaze-sns.gemspec",
      "amaze_sns.rb",
      "exceptions.rb",
@@ -48,20 +47,17 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<eventmachine>, [">= 0"])
       s.add_runtime_dependency(%q<em-http>, [">= 0"])
       s.add_runtime_dependency(%q<crack>, [">= 0"])
-      s.add_runtime_dependency(%q<http_client>, [">= 0"])
       s.add_development_dependency(%q<rspec>, [">= 1.2.9"])
     else
       s.add_dependency(%q<eventmachine>, [">= 0"])
       s.add_dependency(%q<em-http>, [">= 0"])
       s.add_dependency(%q<crack>, [">= 0"])
-      s.add_dependency(%q<http_client>, [">= 0"])
       s.add_dependency(%q<rspec>, [">= 1.2.9"])
     end
   else
     s.add_dependency(%q<eventmachine>, [">= 0"])
     s.add_dependency(%q<em-http>, [">= 0"])
     s.add_dependency(%q<crack>, [">= 0"])
-    s.add_dependency(%q<http_client>, [">= 0"])
     s.add_dependency(%q<rspec>, [">= 1.2.9"])
   end
 end
