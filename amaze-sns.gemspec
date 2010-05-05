@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{amaze-sns}
-  s.version = "0.2.2"
+  s.version = "0.2.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Chee Yeo", "29 Steps UK"]
-  s.date = %q{2010-05-04}
+  s.date = %q{2010-05-05}
   s.description = %q{Ruby gem to interface with the Amazon Simple Notification Service}
   s.email = %q{info@29steps.co.uk}
   s.extra_rdoc_files = [
@@ -27,6 +27,7 @@ Gem::Specification.new do |s|
      "spec/amaze_sns_spec.rb",
      "spec/spec.opts",
      "spec/spec_helper.rb",
+     "subscription.rb",
      "topic.rb"
   ]
   s.homepage = %q{http://github.com/cheeyeo/Amazon-SNS-Ruby}
