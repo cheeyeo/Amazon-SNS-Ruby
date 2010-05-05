@@ -110,7 +110,8 @@ class AmazeSNS
             when "Topic"
               @collection[label] = Topic.new(label,t["TopicArn"])
             when "Subscription"
-              @collection[label] = Subscription.new(t)
+              @collection[label] = Array.new
+              @collection[label] << Subscription.new(t)
             end
             
             #@collection[label] = Kernel.const_get("#{cla}").new(t) # t is a hash
@@ -119,7 +120,9 @@ class AmazeSNS
             when "Topic"
               @collection[label].arn = t["TopicArn"]
             when "Subscription"
-              @collection[label] = t["TopicArn"]
+              #@collection[label] = t["TopicArn"]
+              sub = Subscription.new(t)
+              @collection[label] << sub unless  @collection[label].detect{|x| x.subarn == sub.subarn}
             end
             
             #@collection[label].arn = t["TopicArn"]
