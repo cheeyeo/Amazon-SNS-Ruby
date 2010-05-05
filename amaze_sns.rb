@@ -124,7 +124,6 @@ class AmazeSNS
               sub = Subscription.new(t)
               @collection[label] << sub unless  @collection[label].detect{|x| x.subarn == sub.subarn}
             end
-            
             #@collection[label].arn = t["TopicArn"]
           end
         end
