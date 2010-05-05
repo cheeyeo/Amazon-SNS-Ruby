@@ -8,12 +8,12 @@ class Topic
   
   attr_accessor :topic, :arn, :attrs
 
-  #def initialize(topic, arn='')
-  def initialize(args)
-    # @topic = topic
-    # @arn = arn
-    @topic = args["TopicArn"].split(':').last.to_s
-    @arn = args["TopicArn"]
+  def initialize(topic, arn='')
+  #def initialize(args)
+     @topic = topic
+     @arn = arn
+    # @topic = args["TopicArn"].split(':').last.to_s
+    # @arn = args["TopicArn"]
     @attrs ||= {}
   end
   
@@ -31,7 +31,7 @@ class Topic
   end
   
   def create
-    p "INSIDE CREATE TOPIC OF CLASS TOPIC:\n"
+    #p "INSIDE CREATE TOPIC OF CLASS TOPIC:\n"
     
     params = {
       'Name' => "#{@topic}",
@@ -56,7 +56,7 @@ class Topic
   
   # delete topic
   def delete
-    puts 'INSIDE DELETE TOPIC OF CLASS TOPIC:\n\n'
+    #puts 'INSIDE DELETE TOPIC OF CLASS TOPIC:\n\n'
     
     params = {
       'TopicArn' => "#{arn}",
@@ -87,7 +87,7 @@ class Topic
   # DisplayName -- the human-readable name used in the "From" field for notifications to email and email-json endpoints 
   
   def attrs
-    puts 'INSIDE GET ATTR TOPIC OF CLASS TOPIC:\n\n'
+    #puts 'INSIDE GET ATTR TOPIC OF CLASS TOPIC:\n\n'
     
     params = {
       'TopicArn' => "#{arn}",
@@ -218,7 +218,7 @@ class Topic
   
   
   def publish!(msg, subject='')
-    p "INSIDE PUBLISH METHOD"
+    #p "INSIDE PUBLISH METHOD"
     raise InvalidOptions unless ( !(msg.empty?) && msg.instance_of?(String) )
   
     params = {
