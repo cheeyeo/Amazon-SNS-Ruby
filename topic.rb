@@ -8,9 +8,12 @@ class Topic
   
   attr_accessor :topic, :arn, :attrs
 
-  def initialize(topic, arn='')
-    @topic = topic
-    @arn = arn
+  #def initialize(topic, arn='')
+  def initialize(args)
+    # @topic = topic
+    # @arn = arn
+    @topic = args["TopicArn"].split(':').last.to_s
+    @arn = args["TopicArn"]
     @attrs ||= {}
   end
   
@@ -181,7 +184,7 @@ class Topic
          #p "parsed response: #{parsed_response.inspect}"
          arr = parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member'] unless (parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions'].nil?)
                  
-         p "ARR: #{arr.inspect}"
+         #p "ARR: #{arr.inspect}"
          if !(arr.nil?) && (arr.instance_of?(Array))
            #temp fix for now
            nh = arr.inject({}) do |h,v|

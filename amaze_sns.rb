@@ -2,6 +2,7 @@ require "rubygems"
 require 'logger'
 
 require "topic"
+require "subscription"
 require "helpers"
 require "request"
 require "exceptions"
@@ -17,7 +18,7 @@ class AmazeSNS
   end
   
   class << self
-    attr_accessor :host, :logger, :topics, :skey, :akey
+    attr_accessor :host, :logger, :topics, :skey, :akey, :subscriptions
     #attr_writer :skey, :akey
   end
 
@@ -27,6 +28,7 @@ class AmazeSNS
   self.skey = ''
   self.akey=''
   self.topics ||= {}
+  self.subscriptions ||= {}
   
   def self.[](topic)
     raise CredentialError unless (!(@skey.empty?) && !(@akey.empty?))
@@ -34,77 +36,91 @@ class AmazeSNS
     @topics[topic.to_s]
   end
   
-  #method to refresh the topics hash so as to cut down calls to SNS
-  def self.refresh_list(reload={})
+  
+  def self.method_missing(id, *args, &blk)
+    case(id.to_s)
+    when /^list_(.*)/
+      send(:process_query, $1, &blk)
+    when /^refresh_(.*)/
+      send(:process_query, $1, &blk)
+    else
+      #super
+      raise NoMethodError
+    end
+  end
+  
+  def self.process_query(type, &blk)
+   # p "INSIDE PROCESS query"
+    type = type.capitalize
+    params = {
+      'Action' => "List#{type}",
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => @akey
+    }
     
-    @results = Array.new
-   
-    EM.run do
-      self.list_topics do |response|
-        #p "INSIDE EM LOOP"
-        #p "RAW RESPONSE: #{response.response}"
-        parsed_response = Crack::XML.parse(response.response)
-        #p "PARSED RESPONSE: #{parsed_response.inspect}"
-        @results = parsed_response["ListTopicsResponse"]["ListTopicsResult"]["Topics"]["member"]
-        EM.stop
-      end
-    end # end EM loop
-   
-
-    @results.each do|t|
-      label = t["TopicArn"].split(':').last.to_s
-      unless @topics.has_key?(label)
-        @topics[label] = Topic.new(label,t["TopicArn"])
-      else
-        @topics[label].arn = t["TopicArn"]
-      end
+    req_options={}
+    
+    if (blk)
+      prc = blk
+    else
+      prc = default_prc
     end
     
-  end
-
-  def self.list_topics(&blk)
-    #p "INSIDE LIST TOPICS"
-    # TESTING LIST TOPICS
-
-    params = {
-      'Action' => 'ListTopics',
-      'SignatureMethod' => 'HmacSHA256',
-      'SignatureVersion' => 2,
-      'Timestamp' => Time.now.iso8601,
-      'AWSAccessKeyId' => @akey
+    req_options[:on_success] = prc
+    #req = Request.new(params, req_options).process
+    
+    EM.run{
+      Request.new(params, req_options).process
     }
-    req_options={}
-    req_options[:on_success] = blk if blk
-    req = Request.new(params, req_options).process
-  end
-  
-  def self.list_topics2
-    #p "INSIDE LIST TOPICS"
-    # TESTING LIST TOPICS
-
-    params = {
-      'Action' => 'ListTopics',
-      'SignatureMethod' => 'HmacSHA256',
-      'SignatureVersion' => 2,
-      'Timestamp' => Time.now.iso8601,
-      'AWSAccessKeyId' => @akey
-    }
-
-    req = Request.new(params)
-    response = req.process2
-      
-    # this returns list of topics in the following format:
-    # "{\"ListTopicsResponse\"=>{\"ListTopicsResult\"=>{\"Topics\"=>{\"member\"=>[{\"TopicArn\"=>\"arn:aws:sns:us-east-1:365155214602:Manamana\"}, {\"TopicArn\"=>\"arn:aws:sns:us-east-1:365155214602:smellycats\"}, {\"TopicArn\"=>\"arn:aws:sns:us-east-1:365155214602:29steps_products\"}]}}, \"ResponseMetadata\"=>{\"RequestId\"=>\"d96bd22e-4e01-11df-a8c4-6be3d4c10820\"}, \"xmlns\"=>\"http://sns.amazonaws.com/doc/2010-03-31/\"}}"
-    # need to grab just the member array from the hash to retur it
-    arr = response["ListTopicsResponse"]["ListTopicsResult"]["Topics"]["member"]
-    return arr
-  end
-  
-  
-  # grabs all the subscriptions
-  def self.subscriptions
     
   end
   
+  def self.default_prc
+    prc = Proc.new do |resp|
+      parsed_response = Crack::XML.parse(resp.response)
+      p "SUB RESPONSE: #{parsed_response.inspect}"
+      self.process_response(parsed_response)
+      EM.stop
+    end
+  end
+  
+  def self.process_response(resp)
+    kind = (resp.has_key?("ListTopicsResponse"))? "Topics" : "Subscriptions"
+    cla = (resp.has_key?("ListTopicsResponse"))? "Topic" : "Subscription"
+    p "KIND IS #{kind}"
+    
+    result = resp["List#{kind}Response"]["List#{kind}Result"]["#{kind}"]
+    if result.nil?
+      p "NO DATA FOUND"
+      return nil
+    else
+      results = result["member"]
+    end
+    
+    @collection = self.send(kind.downcase)
+    
+    if !(results.nil?) 
+      if (results.instance_of?(Array))
+        results.each do |t|
+          label = t["TopicArn"].split(':').last.to_s
+          unless @collection.has_key?(label)
+            #@collection[label] = Topic.new(label,t["TopicArn"])
+            @collection[label] = Kernel.const_get("#{cla}").new(t) # t is a hash
+          else
+            @collection[label].arn = t["TopicArn"]
+          end
+        end
+      elsif (results.instance_of?(Hash))
+         # lone entry results in a hash so parse it that way ...
+         label = results["TopicArn"].split(':').last.to_s
+         #@collection[label] = Topic.new(label, results["TopicArn"])
+         @collection[label] = Kernel.const_get("#{cla}").new(results)
+      end
+    else
+      return nil
+    end # end outer if
+  end
   
 end
