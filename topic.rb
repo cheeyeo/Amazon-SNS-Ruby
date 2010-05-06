@@ -9,11 +9,8 @@ class Topic
   attr_accessor :topic, :arn, :attrs
 
   def initialize(topic, arn='')
-  #def initialize(args)
-     @topic = topic
-     @arn = arn
-    # @topic = args["TopicArn"].split(':').last.to_s
-    # @arn = args["TopicArn"]
+    @topic = topic
+    @arn = arn
     @attrs ||= {}
   end
   
