@@ -1,5 +1,6 @@
 class AmazeSNSRuntimeError < RuntimeError; end
 class AmazeSNSError < StandardError; end
+class AuthenticationError < AmazeSNSRuntimeError; end
 
 class InvalidOptions < AmazeSNSError
   def message
@@ -22,5 +23,12 @@ end
 class InvalidParameterError < AmazeSNSError
   def message
     'An invalid parameter is in the request'
+  end
+end
+
+
+class NotFoundError < AmazeSNSError
+  def message
+    'The requested resource is not found'
   end
 end

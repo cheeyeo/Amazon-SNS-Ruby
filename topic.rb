@@ -98,14 +98,21 @@ class Topic
      reactor{
        generate_request(params) do |response|
          parsed_response = Crack::XML.parse(response.response)
-         p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
+         #p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
          res = parsed_response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
-         make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
+         return make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
          EM.stop
         end
      }
      
   end
+  
+  # The SetTopicAttributes action allows a topic owner to set an attribute of the topic to a new value.
+  # only following attributes can be set:
+  # TopicArn -- the topic's ARN 
+  # Owner -- the AWS account ID of the topic's owner 
+  # Policy -- the JSON serialization of the topic's access control policy 
+  # DisplayName -- the human-readable name used in the "From" field for notifications to email and email-json endpoints
   
   def set_attrs(opts)
     
@@ -129,7 +136,7 @@ class Topic
     reactor{
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
-        #p "#{parsed_response.inspect}"
+        p "#{parsed_response.inspect}"
         res = parsed_response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
         return res
         #p "SUBSCRIPTION RESULT: #{res}"
@@ -206,11 +213,59 @@ class Topic
 
   end
   
+  # The AddPermission action adds a statement to a topic's access control policy, granting access for the 
+  # specified AWS accounts to the specified actions.
   
-  def add_permission(opts)   
+  def add_permission(opts)
+    raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
+    
+    params = {
+      'TopicArn' => "#{arn}",
+      'Label' => "#{opts[:label]}",
+      'ActionName.member.1' => "#{opts[:action_name]}",
+      'AWSAccountId.member.1' => "#{opts[:account_id]}",
+      'Action' => 'AddPermission',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        #p "#{parsed_response.inspect}"
+        res = parsed_response['AddPermissionResponse']['ResponseMetadata']['RequestId']
+        #p "ADD PERMISSION RESULT: #{res}"
+        return res
+        EM.stop
+      end
+    }
   end
   
-  def remove_permission(opts)
+  # The RemovePermission action removes a statement from a topic's access control policy. 
+  def remove_permission(label)
+    raise InvalidOptions unless ( !(label.empty?) && label.instance_of?(String) )
+    
+    params = {
+      'TopicArn' => "#{arn}",
+      'Label' => "#{label}",
+      'Action' => 'RemovePermission',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        res = parsed_response['RemovePermissionResponse']['ResponseMetadata']['RequestId']
+        return res
+        EM.stop
+      end
+    }
+    
   end
   
   
@@ -239,6 +294,32 @@ class Topic
     }
 
   end
+  
+  def confirm_subscription(token)
+    raise InvalidOptions unless ( !(token.empty?) && token.instance_of?(String) )
+    
+    params = {
+      'TopicArn' => "#{arn}",
+      'Token' => "#{token}",
+      'Action' => 'ConfirmSubscription',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+    }
+    
+    reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response)
+        resp = parsed_response['ConfirmSubscriptionResponse']['ConfirmSubscriptionResult']['SubscriptionArn']
+        id = parsed_response['ConfirmSubscriptionResponse']['ResponseMetadata']['RequestId']
+        return [resp,id]
+        EM.stop
+      end
+    }
+  end
+  
+  
   
     
   def make_hash(arr)

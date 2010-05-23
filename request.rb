@@ -56,10 +56,31 @@ string_to_sign = "GET
 
       querystring2 = params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&') # order doesn't matter for the actual request
       
-      @httpresponse =  http_class.new("http://#{AmazeSNS.host}/?#{querystring2}").send(:get)
-      @httpresponse.callback{ success_callback }   
-      @httpresponse.errback{ error_callback }
-      nil
+      unless defined?(EventMachine) && EventMachine.reactor_running?
+        raise AmazeSNSRuntimeError, "In order to use this you must be running inside an eventmachine loop"
+      end
+      
+      require 'em-http' unless defined?(EventMachine::HttpRequest)
+      
+      @httpresponse ||=  http_class.new("http://#{AmazeSNS.host}/?#{querystring2}").send(:get)
+      @deferrable = EM::DefaultDeferrable.new
+      
+      @httpresponse.callback{ 
+        begin
+          success_callback
+          @deferrable.succeed
+        rescue => e
+          @deferrable.fail(e)
+        end
+      }   
+      @httpresponse.errback{ 
+        error_callback 
+        AmazeSNS.logger.debug("Network error connecting to Amazon SNS service: #{@httpresponse.inspect}")
+        @deferrable.fail(AmazeSNSRuntimeError.new("Network error connecting to Amazon SNS service"))
+      }
+      #nil
+      
+      @deferrable
   end
   
   def http_class
@@ -75,6 +96,8 @@ string_to_sign = "GET
        raise InternalError
      when 400
        raise InvalidParameterError
+     when 404
+       raise NotFoundError
      else
        call_user_success_handler
      end #end case
