@@ -115,7 +115,6 @@ class Topic
   # DisplayName -- the human-readable name used in the "From" field for notifications to email and email-json endpoints
   
   def set_attrs(opts)
-    
   end
   
   # subscribe method

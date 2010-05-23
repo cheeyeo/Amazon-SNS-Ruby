@@ -42,19 +42,34 @@ describe AmazeSNS do
     
   end
  
-  describe 'calling list_topics' do
-    before do
-     
-     #EM::MockHTTPRequest registered method not workig so making actual calls to service!
-     # subsititue the values below for your actual keys if you want to run this test
-     # else you will receive a permission error
-      AmazeSNS.akey = 'xxxxxxxx'
-      AmazeSNS.skey =  'xxxxxxx'
-      @response_stub = stub()
-      @response_stub.stub!(:errback)
-      @response_stub.stub!(:callback)
-   
-       @params = {
+
+  describe 'Request#process' do
+    module EventMachine
+      module HttpEncoding
+                def encode_query(path, query, uri_query)
+          encoded_query = if query.kind_of?(Hash)
+            query.sort{|a, b| a.to_s <=> b.to_s}.
+            map { |k, v| encode_param(k, v) }.
+            join('&')
+          else
+            query.to_s
+          end
+          if !uri_query.to_s.empty?
+            encoded_query = [encoded_query, uri_query].reject {|part| part.empty?}.join("&")
+          end
+          return path if encoded_query.to_s.empty?
+          "#{path}?#{encoded_query}"
+        end
+      end
+    end
+    
+    before :each do
+      EM::HttpRequest = EM::MockHttpRequest
+      EM::HttpRequest.reset_registry!
+      EM::HttpRequest.reset_counts!
+      EM::HttpRequest.pass_through_requests = false
+      
+      @params = {
         'Action' => 'ListTopics',
         'SignatureMethod' => 'HmacSHA256',
         'SignatureVersion' => 2,
@@ -75,41 +90,43 @@ string_to_sign = "GET
 
       @params['Signature'] = signature
       @querystring2 = @params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&')
+      
     end
     
-    it 'should make a call to method_missing' do
-      AmazeSNS.should_receive(:method_missing).once
-      AmazeSNS.list_topics
-    end
+    it "should return a deferrable which succeeds in success case" do
+      #Time.stub(:now).and_return(123)
     
-    it 'should raise NoMethodError if the method is not valid' do
-       lambda{
-          AmazeSNS.error_method
-        }.should raise_error(NoMethodError)
-    end
-    
-    it 'should invoke em-http-request' do
-      request = mock('em-http', :get => @response_stub)
-      EventMachine::MockHttpRequest.should_receive(:new).with("http://#{AmazeSNS.host}/?#{@querystring2}").and_return(request)
-      AmazeSNS.list_topics
-    end
-    
-    it 'should return the raw xml response as a string and process it into a hash' do
-      EventMachine::MockHttpRequest.register("http://#{AmazeSNS.host}/?#{@querystring2}", "GET", {}, fake_response)
-      # may have to disable em.run loop within amaze_sns line 74 to get beyond the block below??
-      EM.run{
-        AmazeSNS.list_topics do |resp|
-          @raw_resp = Crack::XML.parse(resp.response)
-          AmazeSNS.process_response(@raw_resp)
-          EM.stop
-        end  
+      data = <<-RESPONSE.gsub(/^ +/, '')
+                   HTTP/1.1 202 Accepted
+                   Content-Type: text/html
+                   Content-Length: 13
+                   Connection: keep-alive
+                   Server: thin 1.2.7 codename No Hup
+           
+                   202 ACCEPTED
+      RESPONSE
+      
+      url = "http://#{AmazeSNS.host}/?#{@querystring2}"
+      
+      EM::HttpRequest.register(url, :get, data)
+      
+      EM.run {
+        d = AmazeSNS.list_topics
+        d.callback{
+            @raw_resp = Crack::XML.parse(resp.response)
+            AmazeSNS.process_response(@raw_resp)
+            EM.stop
+        }
       }
       
-      AmazeSNS.topics.keys.size.should > 1
+      
     end
-  
+    
     
   end
+  
+  
+  
   
   after do
     AmazeSNS.topics={}

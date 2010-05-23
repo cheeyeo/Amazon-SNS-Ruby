@@ -8,28 +8,28 @@ require 'em-http'
 require 'em-http/mock'
 
 Spec::Runner.configure do |config|
-  EventMachine.instance_eval do
-        # Switching out EM's defer since it makes tests just a tad more unreliable
-        alias :defer_original :defer
-        def defer
-          yield
-        end
-      end unless EM.respond_to?(:defer_original)
-      
-  
-  def run_in_em_loop
-    EM.run {
-      yield
-    }
-  end
-  
-  class Request
-        self.module_eval do
-          def http_class
-            EventMachine::MockHttpRequest
-          end
-        end
-      end
+  # EventMachine.instance_eval do
+  #         # Switching out EM's defer since it makes tests just a tad more unreliable
+  #         alias :defer_original :defer
+  #         def defer
+  #           yield
+  #         end
+  #       end unless EM.respond_to?(:defer_original)
+  #       
+  #   
+  #   def run_in_em_loop
+  #     EM.run {
+  #       yield
+  #     }
+  #   end
+  #   
+  #   class Request
+  #         self.module_eval do
+  #           def http_class
+  #             EventMachine::MockHttpRequest
+  #           end
+  #         end
+  #       end
 
 
 def fake_response
