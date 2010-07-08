@@ -1,0 +1,15 @@
+8TH JULY 2010
+=====================================
+Version 1.0.0 stable release
+
+Changes:
+. General fixes to missing files on gem install due to error in Rakefile
+
+. Added some example code in examples folder
+
+. Added in extra return statements at the end of each Topic action as EM reactor loop returns nil
+on ruby 1.8.7 Enterprise Edition on 64 bit machines
+
+. Added set_attrs action in Topic to allow user to set attributes for each Topic
+
+. Added in JSON support to parse the Policy attribute of a Topic
