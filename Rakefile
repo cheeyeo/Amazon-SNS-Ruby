@@ -14,9 +14,9 @@ begin
     gemspec.add_dependency('eventmachine', '>= 0.12.9')
     gemspec.add_dependency("em-http-request", '>=0.2.8')
     gemspec.add_dependency("crack", '>=0.1.6')
-    gemspec.add_dependency "ruby-hmac"
+    gemspec.add_dependency "ruby-hmac", ">=0.4.0"
+    gemspec.add_dependency "json", ">=1.4.3"
     gemspec.add_development_dependency "rspec", ">= 1.2.9"
-    #gemspec.files = FileList[`git ls-files`.split]
     gemspec.files = FileList['lib/*.rb', 'lib/**/*.rb']
     gemspec.test_files = ['spec/*.rb', 'spec/spec.opts']
   end

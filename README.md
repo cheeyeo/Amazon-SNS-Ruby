@@ -28,7 +28,7 @@ Tests
 ---------------
 The specs are not fully working at the moment as the gem is undergoing a serious revamp.
 
-The gem itself has been tested on systems running ruby 1.8.6 and ruby 1.8.7, both standard and enterprise editions.
+The gem itself has been tested on systems running ruby 1.8.6 and ruby 1.8.7
 
 
 

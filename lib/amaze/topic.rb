@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + "/request"
 require File.dirname(__FILE__) + "/exceptions"
 require "eventmachine"
-
+require "json"
 
 class Topic
   
@@ -45,13 +45,12 @@ class Topic
          EM.stop
        end
      }
-    
+    @arn
   end
   
   # delete topic
   def delete
-    #puts 'INSIDE DELETE TOPIC OF CLASS TOPIC:\n\n'
-    
+    parsed_response = ''
     params = {
       'TopicArn' => "#{arn}",
       'Action' => 'DeleteTopic',
@@ -64,14 +63,12 @@ class Topic
      reactor{
        generate_request(params) do |response|
          parsed_response = Crack::XML.parse(response.response)
-         #p "RESPONSE FROM DELETE: #{parsed_response.inspect}"
-         # update @topics hash in main class
          AmazeSNS.topics.delete("#{@topic}")
          AmazeSNS.topics.rehash
          EM.stop
         end
       }
-    
+    parsed_response
   end
   
   # get attributes for topic from remote sns server
@@ -81,7 +78,6 @@ class Topic
   # DisplayName -- the human-readable name used in the "From" field for notifications to email and email-json endpoints 
   
   def attrs
-    #puts 'INSIDE GET ATTR TOPIC OF CLASS TOPIC:\n\n'
     outcome = nil
     params = {
       'TopicArn' => "#{arn}",
@@ -94,8 +90,7 @@ class Topic
  
      reactor{
        generate_request(params) do |response|
-         parsed_response = Crack::XML.parse(response.response)
-         p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
+         parsed_response = Crack::XML.parse(response.response) 
          res = parsed_response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
          outcome = make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
          EM.stop
@@ -112,12 +107,32 @@ class Topic
   # DisplayName -- the human-readable name used in the "From" field for notifications to email and email-json endpoints
   
   def set_attrs(opts)
+    outcome = nil
+    params = {
+      'AttributeName' => "#{opts[:name]}",
+      'AttributeValue' => "#{opts[:value]}",
+      'TopicArn' => "#{arn}",
+      'Action' => 'SetTopicAttributes',
+      'SignatureMethod' => 'HmacSHA256',
+      'SignatureVersion' => 2,
+      'Timestamp' => Time.now.iso8601,
+      'AWSAccessKeyId' => AmazeSNS.akey
+     }
+     
+     reactor{
+      generate_request(params) do |response|
+        parsed_response = Crack::XML.parse(response.response) 
+        outcome = parsed_response['SetTopicAttributesResponse']['ResponseMetadata']['RequestId']
+        EM.stop
+      end
+    }
+    return outcome
   end
   
   # subscribe method
   def subscribe(opts)
     raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
-    
+    res=''
     params = {
       'TopicArn' => "#{arn}",
       'Endpoint' => "#{opts[:endpoint]}",
@@ -132,18 +147,17 @@ class Topic
     reactor{
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
-        p "#{parsed_response.inspect}"
         res = parsed_response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
         return res
         EM.stop
       end
     }
-    
+    res
   end
   
   def unsubscribe(id)
     raise InvalidOptions unless ( !(id.empty?) && id.instance_of?(String) )
-    
+    res=''
     params = {
       'SubscriptionArn' => "#{id}",
       'Action' => 'Unsubscribe',
@@ -157,16 +171,17 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['UnsubscribeResponse']['ResponseMetadata']['RequestId']
-        #p "UN-SUBSCRIPTION RESULT: #{res}"
         return res
         EM.stop
       end
     }
+    res
   end
   
   
   # grabs list of subscriptions for this topic only
   def subscriptions
+    nh={}
     params = {
       'TopicArn' => "#{arn}",
       'Action' => 'ListSubscriptionsByTopic',
@@ -178,12 +193,9 @@ class Topic
     
     reactor{
        generate_request(params) do |response|
-         #p "response: #{response.response}"
          parsed_response = Crack::XML.parse(response.response)
-         #p "parsed response: #{parsed_response.inspect}"
          arr = parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member'] unless (parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions'].nil?)
-                 
-         #p "ARR: #{arr.inspect}"
+
          if !(arr.nil?) && (arr.instance_of?(Array))
            #temp fix for now
            nh = arr.inject({}) do |h,v|
@@ -194,18 +206,15 @@ class Topic
            end
          elsif !(arr.nil?) && (arr.instance_of?(Hash))
            # to deal with one subscription issue
-           nh = {}
            key = arr["SubscriptionArn"]
            arr.delete("SubscriptionArn")
            nh[key.to_s] = arr
          end
-         
-         #puts "NEW HASH IS: #{nh.inspect}"
          return nh
          EM.stop
        end
     }
-
+    nh
   end
   
   # The AddPermission action adds a statement to a topic's access control policy, granting access for the 
@@ -213,7 +222,7 @@ class Topic
   
   def add_permission(opts)
     raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
-    
+    res=''
     params = {
       'TopicArn' => "#{arn}",
       'Label' => "#{opts[:label]}",
@@ -234,12 +243,13 @@ class Topic
         EM.stop
       end
     }
+    res
   end
   
   # The RemovePermission action removes a statement from a topic's access control policy. 
   def remove_permission(label)
     raise InvalidOptions unless ( !(label.empty?) && label.instance_of?(String) )
-    
+    res=''
     params = {
       'TopicArn' => "#{arn}",
       'Label' => "#{label}",
@@ -258,13 +268,13 @@ class Topic
         EM.stop
       end
     }
-    
+    res
   end
   
   
   def publish!(msg, subject='')
     raise InvalidOptions unless ( !(msg.empty?) && msg.instance_of?(String) )
-  
+    res=''
     params = {
       'Subject' => "My First Message",
       'TopicArn' => "#{arn}",
@@ -284,12 +294,12 @@ class Topic
         EM.stop
       end
     }
-
+    res
   end
   
   def confirm_subscription(token)
     raise InvalidOptions unless ( !(token.empty?) && token.instance_of?(String) )
-    
+    arr=[]
     params = {
       'TopicArn' => "#{arn}",
       'Token' => "#{token}",
@@ -305,10 +315,12 @@ class Topic
         parsed_response = Crack::XML.parse(response.response)
         resp = parsed_response['ConfirmSubscriptionResponse']['ConfirmSubscriptionResult']['SubscriptionArn']
         id = parsed_response['ConfirmSubscriptionResponse']['ResponseMetadata']['RequestId']
-        return [resp,id]
+        arr = [resp,id]
+        return arr
         EM.stop
       end
     }
+    arr
   end
   
   
@@ -316,8 +328,8 @@ class Topic
     
   def make_hash(arr)
     hash = arr.inject({}) do |h, v|
+      (v["key"] == "Policy")? value = JSON.parse(v["value"]) : value = v["value"]
       key = v["key"].to_s
-      value = v["value"]
       h[key] = value
       h
     end
