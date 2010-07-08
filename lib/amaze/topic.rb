@@ -27,8 +27,6 @@ class Topic
   end
   
   def create
-    #p "INSIDE CREATE TOPIC OF CLASS TOPIC:\n"
-    
     params = {
       'Name' => "#{@topic}",
       'Action' => 'CreateTopic',
@@ -84,7 +82,7 @@ class Topic
   
   def attrs
     #puts 'INSIDE GET ATTR TOPIC OF CLASS TOPIC:\n\n'
-    
+    outcome = nil
     params = {
       'TopicArn' => "#{arn}",
       'Action' => 'GetTopicAttributes',
@@ -97,13 +95,13 @@ class Topic
      reactor{
        generate_request(params) do |response|
          parsed_response = Crack::XML.parse(response.response)
-         #p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
+         p "RESPONSE FROM ATTRS: #{parsed_response.inspect}"  
          res = parsed_response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
-         return make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
+         outcome = make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
          EM.stop
         end
      }
-     
+     return outcome
   end
   
   # The SetTopicAttributes action allows a topic owner to set an attribute of the topic to a new value.
@@ -137,7 +135,6 @@ class Topic
         p "#{parsed_response.inspect}"
         res = parsed_response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
         return res
-        #p "SUBSCRIPTION RESULT: #{res}"
         EM.stop
       end
     }
