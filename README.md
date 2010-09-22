@@ -23,12 +23,14 @@ Dependencies
 Require the CrackXML gem for parsing XML responses back from SNS; EventMachine
 and EM-Http request gem for the requests; and ruby hmac gem for authenticating with Amazon Web Services
 
+For Ruby 1.9.2 users, if you are having errors, please check that your em-http-request gem version is not
+higher than 0.2.10 although the gemspec has been updated to reflect this
 
 Tests
 ---------------
-The specs are not fully working at the moment as the gem is undergoing a serious revamp.
+The specs are partly working at the moment as the gem is still under development
 
-The gem itself has been tested on systems running ruby 1.8.6 and ruby 1.8.7
+The gem itself has been tested on systems running ruby 1.8.6, 1.8.7, 1.9.2
 
 
 
