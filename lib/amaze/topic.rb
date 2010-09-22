@@ -210,7 +210,7 @@ class Topic
            arr.delete("SubscriptionArn")
            nh[key.to_s] = arr
          end
-         return nh
+         #return nh
          EM.stop
        end
     }
