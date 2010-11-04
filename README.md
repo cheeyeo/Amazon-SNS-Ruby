@@ -11,19 +11,19 @@ Usage
 
 ### Quickstart Guide ###
 
-  `gem install amaze_sns
+    gem install amaze_sns
 
-  require 'amaze-sns'
+    require 'amaze-sns'
 
-  AmazeSNS.skey = 'your amazon aws secret key'
+    AmazeSNS.skey = 'your amazon aws secret key'
 
-  AmazeSNS.akey = 'your amazon aws access key'
+    AmazeSNS.akey = 'your amazon aws access key'
 
-  AmazeSNS['your_topic_name'] # creates a new Topic Object but not yet published
-  AmazeSNS['your_topic_name'].create # add new topic to local hash and to SNS
-  AmazeSNS['your_topic_name'].delete # removes it from both SNS and local hash
+    AmazeSNS['your_topic_name'] # creates a new Topic Object but not yet published
+    AmazeSNS['your_topic_name'].create # add new topic to local hash and to SNS
+    AmazeSNS['your_topic_name'].delete # removes it from both SNS and local hash
 
-  AmazeSNS.logger = my_logger # set a logger for the response`
+    AmazeSNS.logger = my_logger # set a logger for the response`
 
 
 Dependencies
