@@ -42,14 +42,14 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<eventmachine>, [">= 0.12.10"])
-      s.add_runtime_dependency(%q<em-http-request>, [">= 0.2.10", "<= 0.2.14"])
+      s.add_runtime_dependency(%q<em-http-request>, ["> 0.2.8", "<= 0.2.10"])
       s.add_runtime_dependency(%q<crack>, [">= 0.1.6"])
       s.add_runtime_dependency(%q<ruby-hmac>, [">= 0.4.0"])
       s.add_runtime_dependency(%q<json>, [">= 1.4.3"])
       s.add_development_dependency(%q<rspec>, [">= 1.2.9"])
     else
       s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
-      s.add_dependency(%q<em-http-request>, [">= 0.2.10", "<= 0.2.14"])
+      s.add_dependency(%q<em-http-request>, ["> 0.2.8", "<= 0.2.10"])
       s.add_dependency(%q<crack>, [">= 0.1.6"])
       s.add_dependency(%q<ruby-hmac>, [">= 0.4.0"])
       s.add_dependency(%q<json>, [">= 1.4.3"])
@@ -57,7 +57,7 @@ Gem::Specification.new do |s|
     end
   else
     s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
-    s.add_dependency(%q<em-http-request>, [">= 0.2.10", "<= 0.2.14"])
+    s.add_dependency(%q<em-http-request>, ["> 0.2.8", "<= 0.2.10"])
     s.add_dependency(%q<crack>, [">= 0.1.6"])
     s.add_dependency(%q<ruby-hmac>, [">= 0.4.0"])
     s.add_dependency(%q<json>, [">= 1.4.3"])
