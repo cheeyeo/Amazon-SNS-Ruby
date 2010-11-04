@@ -11,7 +11,7 @@ Usage
 
 ### Quickstart Guide ###
 
-  gem install amaze_sns
+  `gem install amaze_sns`
 
   require 'amaze-sns'
 
