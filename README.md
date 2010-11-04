@@ -3,10 +3,15 @@ Amazon SNS gem
 
 Introduction
 ---------
+
 A Ruby gem for use with the Amazon Simple Notification service (http://aws.amazon.com/sns/).
 
 Usage
 ---------------
+
+gem install amaze_sns
+
+require 'amaze-sns'
 
 AmazeSNS.skey = <your amazon aws secret key>
 
@@ -20,11 +25,13 @@ AmazeSNS.logger = my_logger # set a logger for the response
 
 Dependencies
 ---------------
+
 Require the CrackXML gem for parsing XML responses back from SNS; EventMachine
 and EM-Http request gem for the requests; and ruby hmac gem for authenticating with Amazon Web Services
 
 For Ruby 1.9.2 users, if you are having errors, please check that your em-http-request gem version is not
 higher than 0.2.10 although the gemspec has been updated to reflect this
+
 
 Tests
 ---------------

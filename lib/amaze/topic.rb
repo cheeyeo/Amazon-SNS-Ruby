@@ -96,7 +96,7 @@ class Topic
          EM.stop
         end
      }
-     return outcome
+     outcome
   end
   
   # The SetTopicAttributes action allows a topic owner to set an attribute of the topic to a new value.
@@ -126,7 +126,7 @@ class Topic
         EM.stop
       end
     }
-    return outcome
+    outcome
   end
   
   # subscribe method
@@ -148,7 +148,6 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['SubscribeResponse']['SubscribeResult']['SubscriptionArn']
-        return res
         EM.stop
       end
     }
@@ -171,7 +170,6 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['UnsubscribeResponse']['ResponseMetadata']['RequestId']
-        return res
         EM.stop
       end
     }
@@ -210,7 +208,6 @@ class Topic
            arr.delete("SubscriptionArn")
            nh[key.to_s] = arr
          end
-         #return nh
          EM.stop
        end
     }
@@ -239,7 +236,6 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['AddPermissionResponse']['ResponseMetadata']['RequestId']
-        return res
         EM.stop
       end
     }
@@ -264,7 +260,6 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['RemovePermissionResponse']['ResponseMetadata']['RequestId']
-        return res
         EM.stop
       end
     }
@@ -272,11 +267,11 @@ class Topic
   end
   
   
-  def publish!(msg, subject='')
+  def publish(msg, subject='My First Message')
     raise InvalidOptions unless ( !(msg.empty?) && msg.instance_of?(String) )
     res=''
     params = {
-      'Subject' => "My First Message",
+      'Subject' => subject,
       'TopicArn' => "#{arn}",
       "Message" => "#{msg}",
       'Action' => 'Publish',
@@ -290,7 +285,6 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response)
         res = parsed_response['PublishResponse']['PublishResult']['MessageId']
-        return res
         EM.stop
       end
     }
@@ -316,7 +310,6 @@ class Topic
         resp = parsed_response['ConfirmSubscriptionResponse']['ConfirmSubscriptionResult']['SubscriptionArn']
         id = parsed_response['ConfirmSubscriptionResponse']['ResponseMetadata']['RequestId']
         arr = [resp,id]
-        return arr
         EM.stop
       end
     }
