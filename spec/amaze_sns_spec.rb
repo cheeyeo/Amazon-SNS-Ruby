@@ -2,7 +2,6 @@
 require File.expand_path('../spec_helper', __FILE__)
 
 require 'em-http'
-#require 'em-http/mock'
 
 describe AmazeSNS do
   
@@ -59,11 +58,13 @@ describe AmazeSNS do
       EventMachine::MockHttpRequest.reset_registry!
       EventMachine::MockHttpRequest.reset_counts!
       EventMachine::MockHttpRequest.pass_through_requests = false #set to false to not hit the actual API endpoint
+      
+      @time_stub = stub("A")
     end
     
-    # error count not updated as register not called??
     it 'should be able to access the API endpoint' do
-      Time.stub(:now).and_return(123)
+      @time_stub.should_receive(:iso8601).and_return(123)
+      Time.stub(:now).and_return(@time_stub)
       
       EventMachine::MockHttpRequest.use {
         data = <<-RESPONSE.gsub(/^ +/, '')
@@ -81,15 +82,22 @@ describe AmazeSNS do
         EventMachine::MockHttpRequest.register(@url,:get,{},data)
         
         EM.run{
-          AmazeSNS.list_topics
-          EM::HttpRequest.count(@url, :get).should == 1
+          d = AmazeSNS.list_topics
+          d.callback{
+            EM::HttpRequest.count(@url, :get).should == 1
+            EM.stop
+          }
+          d.errback{|error|
+            EM.stop
+          }
         }
 
       } #end EM:MockHttpRequest block
     end
     
-    it 'should return a defferable on fail' do
-      Time.stub(:now).and_return(123)
+    it 'should return a deferrable on fail' do
+      @time_stub.should_receive(:iso8601).and_return(123)
+      Time.stub(:now).and_return(@time_stub)
       
       EventMachine::MockHttpRequest.use {
         data = <<-RESPONSE.gsub(/^ +/, '')
@@ -101,23 +109,60 @@ describe AmazeSNS do
           Via: 1.0 .:80 (squid)
           Connection: close
 
-          403 UNAUTHORIZED: Timestamp expired
+          403 UNAUTHORIZED: Some error
         RESPONSE
 
         EventMachine::MockHttpRequest.register(@url,:get,{},data)
         
-        # need to refactor this part to just return the deferrable object
-        
         EM.run{
-          AmazeSNS.list_topics
-          EM::HttpRequest.count(@url, :get).should == 1
+           d= AmazeSNS.list_topics
+           d.callback{
+             fail
+           }
+           d.errback{|error|
+             EM::HttpRequest.count(@url, :get).should == 1
+             error.should be_kind_of(AuthorizationError)
+             EM.stop
+           }
+          
         } 
         
       } #end EM:MockHttpRequest block
     end
+    
+    it 'should call method_missing and process_query' do
+      @time_stub.should_receive(:iso8601).and_return(123)
+      Time.stub(:now).and_return(@time_stub)
       
+      #rspec expectations matchers
+      AmazeSNS.should respond_to(:method_missing)
+      AmazeSNS.should respond_to(:process_query).with(1).argument
+      
+      data = <<-RESPONSE.gsub(/^ +/, '')
+        HTTP/1.0 200 OK
+        Date: Mon, 16 Nov 2009 20:39:15 GMT
+        Expires: -1
+        Cache-Control: private, max-age=0
+        Content-Type: text/html; charset=ISO-8859-1
+        Via: 1.0 .:80 (squid)
+        Connection: close
+
+        This is my awesome content
+      RESPONSE
+      
+      EventMachine::MockHttpRequest.use{
+        EventMachine::MockHttpRequest.register(@url,:get,{},data)
+          
+          EM.run{
+            AmazeSNS.list_topics
+            EM.stop
+          }
+
+      } #end EM:MockHttpRequest block
+    end
+    
+    
   end
-  
   
   after do
     AmazeSNS.topics={}

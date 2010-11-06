@@ -44,19 +44,17 @@ class AmazeSNS
     when /^refresh_(.*)/
       send(:process_query, $1, &blk)
     else
-      #super
       raise NoMethodError
     end
   end
   
   def self.process_query(type, &blk)
-   # p "INSIDE PROCESS query"
     type = type.capitalize
     params = {
       'Action' => "List#{type}",
       'SignatureMethod' => 'HmacSHA256',
       'SignatureVersion' => 2,
-      'Timestamp' => Time.now.iso8601,
+      'Timestamp' => Time.now.iso8601, #Time.now.iso8601 makes tests fail
       'AWSAccessKeyId' => @akey
     }
     
@@ -69,18 +67,13 @@ class AmazeSNS
     end
     
     req_options[:on_success] = prc
-    #req = Request.new(params, req_options).process
-    
-    EM.run{
-      Request.new(params, req_options).process
-    }
-    
+    deferrable = Request.new(params, req_options).process
+    deferrable
   end
   
   def self.default_prc
     prc = Proc.new do |resp|
       parsed_response = Crack::XML.parse(resp.response)
-      #p "SUB RESPONSE: #{parsed_response.inspect}"
       self.process_response(parsed_response)
       EM.stop
     end
@@ -94,7 +87,7 @@ class AmazeSNS
     result = resp["List#{kind}Response"]["List#{kind}Result"]["#{kind}"]
     if result.nil?
       p "NO DATA FOUND"
-      return nil
+      nil
     else
       results = result["member"]
     end
@@ -140,7 +133,7 @@ class AmazeSNS
          #@collection[label] = Kernel.const_get("#{cla}").new(results)
       end
     else
-      return nil
+      nil
     end # end outer if
   end
   

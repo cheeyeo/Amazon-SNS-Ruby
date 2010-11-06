@@ -5,18 +5,19 @@ require "json"
 
 class Topic
   
-  attr_accessor :topic, :arn, :attrs
+  attr_accessor :topic, :arn, :attributes
 
   def initialize(topic, arn='')
     @topic = topic
     @arn = arn
-    @attrs ||= {}
+    @attributes = {}
   end
   
   def generate_request(params,&blk)
     req_options={}
     req_options[:on_success] = blk if blk
-    Request.new(params, req_options).process
+    deferrable = Request.new(params, req_options).process
+    deferrable
   end
   
   # for running th EM loop w/o repetitions
@@ -93,6 +94,7 @@ class Topic
          parsed_response = Crack::XML.parse(response.response) 
          res = parsed_response['GetTopicAttributesResponse']['GetTopicAttributesResult']['Attributes']["entry"]
          outcome = make_hash(res) #res["entry"] is an array of hashes - need to turn it into hash with key value
+         self.attributes = outcome
          EM.stop
         end
      }
@@ -318,17 +320,16 @@ class Topic
   
   
   
-    
-  def make_hash(arr)
-    hash = arr.inject({}) do |h, v|
-      (v["key"] == "Policy")? value = JSON.parse(v["value"]) : value = v["value"]
-      key = v["key"].to_s
-      h[key] = value
-      h
+  private  
+    def make_hash(arr)
+      hash = arr.inject({}) do |h, v|
+        (v["key"] == "Policy")? value = JSON.parse(v["value"]) : value = v["value"]
+        key = v["key"].to_s
+        h[key] = value
+        h
+      end
+      hash
     end
-    
-    hash
-  end
   
   
   

@@ -1,5 +1,6 @@
-
+require "rubygems"
 require 'crack/xml'
+require 'ruby-debug'
 
 require File.dirname(__FILE__) + "/helpers"
 require File.dirname(__FILE__) + "/exceptions"
@@ -14,24 +15,6 @@ class Request
   def initialize(params, options={})
     @params = params
     @options = options
-  end
-  
-  def process2
-    query_string = canonical_querystring(@params)
-string_to_sign = "GET
-#{AmazeSNS.host}
-/
-#{query_string}"
-     
-     hmac = HMAC::SHA256.new(AmazeSNS.skey)
-     hmac.update( string_to_sign )
-     signature = Base64.encode64(hmac.digest).chomp
-
-     params['Signature'] = signature
-     querystring2 = params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&') # order doesn't matter for the actual request
-     response = HttpClient.get "#{AmazeSNS.host}?#{querystring2}"
-     parsed_response = Crack::XML.parse(response)
-     return parsed_response
   end
   
   def process
@@ -55,10 +38,24 @@ string_to_sign = "GET
       
       require 'em-http' unless defined?(EventMachine::HttpRequest)
       
-      @httpresponse ||=  http_class.new("http://#{AmazeSNS.host}/?#{querystring2}").send(:get)
-      @httpresponse.callback{ success_callback }
-      @httpresponse.errback{ error_callback }
-      nil
+      deferrable = EM::DefaultDeferrable.new
+      
+      @httpresponse ||= http_class.new("http://#{AmazeSNS.host}/?").get({
+        :query => querystring2, :timeout => 2
+      })
+      @httpresponse.callback{
+        begin
+          success_callback
+          deferrable.succeed     
+        rescue => e
+          deferrable.fail(e)
+        end 
+      }
+      @httpresponse.errback{ 
+        error_callback
+        deferrable.fail(AmazeSNSRuntimeError.new("A runtime error has occured: status code: #{@httpresponse.response_header.status}"))
+      }
+      deferrable
   end
   
   def http_class
