@@ -1,3 +1,15 @@
+5TH NOVEMBER 2010
+=====================================
+Version 1.3.0 stable release
+
+Changes:
+. Removed return values from within EM loops and put it at the end of the enclosing method itself in Topic class
+
+- Improving on test coverage using WebMock
+
+- 
+
+
 8TH JULY 2010
 =====================================
 Version 1.0.0 stable release

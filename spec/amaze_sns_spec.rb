@@ -1,14 +1,12 @@
-require File.dirname(__FILE__) + '/spec_helper.rb'
+#require File.dirname(__FILE__) + '/spec_helper.rb'
+require File.expand_path('../spec_helper', __FILE__)
+
+require 'em-http'
+#require 'em-http/mock'
 
 describe AmazeSNS do
   
-  before(:each) do
-    EventMachine::MockHttpRequest.reset_counts!
-    EventMachine::MockHttpRequest.reset_registry!
-  end
-  
-  describe 'in its initial state' do
-  
+  describe 'in its initial state' do 
     it "should return the preconfigured host endpoint" do
       AmazeSNS.host.should == 'sns.us-east-1.amazonaws.com'
     end
@@ -17,6 +15,21 @@ describe AmazeSNS do
       AmazeSNS.topics.should == {}
     end
     
+    it "should return a blank Subscriptions hash" do
+      AmazeSNS.subscriptions.should == {}
+    end
+    
+    it 'should have the logger instantiated' do
+      AmazeSNS.logger.debug('some message')
+      AmazeSNS.logger.should be_kind_of(Logger)
+    end
+    
+    it 'should be able to accept any kind of logger' do
+      a_logger = mock("MyLogger")
+      a_logger.should_receive(:debug).with('some data')
+      AmazeSNS.logger = a_logger
+      AmazeSNS.logger.debug('some data')
+    end
   end
   
   describe 'without the keys' do
@@ -27,8 +40,7 @@ describe AmazeSNS do
     end
   end
   
-  describe 'with the keys configured' do
-    
+  describe 'with the keys configured' do   
     before do
       AmazeSNS.akey = '123456'
       AmazeSNS.skey = '123456'
@@ -39,97 +51,77 @@ describe AmazeSNS do
       @topic.should be_kind_of(Topic)
       @topic.topic.should == 'Test'
     end
-    
   end
- 
-
-  describe 'Request#process' do
-    module EventMachine
-      module HttpEncoding
-                def encode_query(path, query, uri_query)
-          encoded_query = if query.kind_of?(Hash)
-            query.sort{|a, b| a.to_s <=> b.to_s}.
-            map { |k, v| encode_param(k, v) }.
-            join('&')
-          else
-            query.to_s
-          end
-          if !uri_query.to_s.empty?
-            encoded_query = [encoded_query, uri_query].reject {|part| part.empty?}.join("&")
-          end
-          return path if encoded_query.to_s.empty?
-          "#{path}?#{encoded_query}"
-        end
-      end
-    end
-    
+  
+  describe 'making the api calls' do
     before :each do
-      EM::HttpRequest = EM::MockHttpRequest
-      EM::HttpRequest.reset_registry!
-      EM::HttpRequest.reset_counts!
-      EM::HttpRequest.pass_through_requests = false
-      
-      @params = {
-        'Action' => 'ListTopics',
-        'SignatureMethod' => 'HmacSHA256',
-        'SignatureVersion' => 2,
-        'Timestamp' => Time.now.iso8601,
-        'AWSAccessKeyId' => AmazeSNS.akey
-      }
-
-      @query_string = canonical_querystring(@params)
-
-string_to_sign = "GET
-#{AmazeSNS.host}
-/
-#{@query_string}"
-
-      hmac = HMAC::SHA256.new(AmazeSNS.skey)
-      hmac.update( string_to_sign )
-      signature = Base64.encode64(hmac.digest).chomp
-
-      @params['Signature'] = signature
-      @querystring2 = @params.collect { |key, value| [url_encode(key), url_encode(value)].join("=") }.join('&')
-      
+      @url = 'http://sns.us-east-1.amazonaws.com:80/?Action=ListTopics&Signature=ItTAjeexIPC43pHMZLCL7utnpK8j8AbTUZ3KGUSMzNc%3D&AWSAccessKeyId=123456&Timestamp=123&SignatureVersion=2&SignatureMethod=HmacSHA256'
+      EventMachine::MockHttpRequest.reset_registry!
+      EventMachine::MockHttpRequest.reset_counts!
+      EventMachine::MockHttpRequest.pass_through_requests = false #set to false to not hit the actual API endpoint
     end
     
-    it "should return a deferrable which succeeds in success case" do
-      #Time.stub(:now).and_return(123)
-    
-      data = <<-RESPONSE.gsub(/^ +/, '')
-                   HTTP/1.1 202 Accepted
-                   Content-Type: text/html
-                   Content-Length: 13
-                   Connection: keep-alive
-                   Server: thin 1.2.7 codename No Hup
-           
-                   202 ACCEPTED
-      RESPONSE
+    # error count not updated as register not called??
+    it 'should be able to access the API endpoint' do
+      Time.stub(:now).and_return(123)
       
-      url = "http://#{AmazeSNS.host}/?#{@querystring2}"
-      
-      EM::HttpRequest.register(url, :get, data)
-      
-      EM.run {
-        d = AmazeSNS.list_topics
-        d.callback{
-            @raw_resp = Crack::XML.parse(resp.response)
-            AmazeSNS.process_response(@raw_resp)
-            EM.stop
+      EventMachine::MockHttpRequest.use {
+        data = <<-RESPONSE.gsub(/^ +/, '')
+          HTTP/1.0 200 OK
+          Date: Mon, 16 Nov 2009 20:39:15 GMT
+          Expires: -1
+          Cache-Control: private, max-age=0
+          Content-Type: text/html; charset=ISO-8859-1
+          Via: 1.0 .:80 (squid)
+          Connection: close
+
+          This is my awesome content
+        RESPONSE
+        
+        EventMachine::MockHttpRequest.register(@url,:get,{},data)
+        
+        EM.run{
+          AmazeSNS.list_topics
+          EM::HttpRequest.count(@url, :get).should == 1
         }
-      }
-      
-      
+
+      } #end EM:MockHttpRequest block
     end
     
-    
+    it 'should return a defferable on fail' do
+      Time.stub(:now).and_return(123)
+      
+      EventMachine::MockHttpRequest.use {
+        data = <<-RESPONSE.gsub(/^ +/, '')
+          HTTP/1.0 403 Unauthorized
+          Date: Mon, 16 Nov 2009 20:39:15 GMT
+          Expires: -1
+          Cache-Control: private, max-age=0
+          Content-Type: text/html; charset=ISO-8859-1
+          Via: 1.0 .:80 (squid)
+          Connection: close
+
+          403 UNAUTHORIZED: Timestamp expired
+        RESPONSE
+
+        EventMachine::MockHttpRequest.register(@url,:get,{},data)
+        
+        # need to refactor this part to just return the deferrable object
+        
+        EM.run{
+          AmazeSNS.list_topics
+          EM::HttpRequest.count(@url, :get).should == 1
+        } 
+        
+      } #end EM:MockHttpRequest block
+    end
+      
   end
-  
-  
   
   
   after do
     AmazeSNS.topics={}
+    AmazeSNS.subscriptions={}
   end
   
  
