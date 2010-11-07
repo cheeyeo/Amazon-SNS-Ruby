@@ -1,18 +1,19 @@
 require 'rubygems'
-require 'spec'
-require 'spec/autorun'
+
+require 'rspec'
+require 'rspec/autorun'
+require 'em-http'
+require 'webmock'
+require 'webmock/rspec'
 
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 
-# require 'lib/request'
 require 'amaze_sns'
 require 'eventmachine'
 
 
-Spec::Runner.configure do |config|
- 
-end #end configure
-
-
+RSpec.configure do |config|
+  config.include WebMock::API
+end
 
