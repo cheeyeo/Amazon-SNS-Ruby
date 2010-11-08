@@ -1,6 +1,5 @@
 autoload 'Logger', 'logger'
 
-
 require File.dirname(__FILE__) + "/amaze/topic"
 require File.dirname(__FILE__) + "/amaze/subscription"
 require File.dirname(__FILE__) + "/amaze/helpers"
@@ -18,13 +17,21 @@ class AmazeSNS
   end
   
   class << self
-    attr_accessor :host, :logger, :topics, :skey, :akey, :subscriptions
-    #attr_writer :skey, :akey
+    attr_accessor :host, :topics, :skey, :akey, :subscriptions, :logger
+    
+    def logger
+      @logger ||= begin
+        log = Logger.new(STDOUT)
+        log.level = Logger::INFO
+        log
+      end
+    end
   end
-
+  
+  
   
   self.host = 'sns.us-east-1.amazonaws.com'
-  self.logger = Logger.new($STDOUT)
+  #self.logger ||= Logger.new($STDOUT)
   self.skey = ''
   self.akey=''
   self.topics ||= {}

@@ -4,6 +4,12 @@ require File.expand_path('../spec_helper', __FILE__)
 require 'em-http'
 
 describe AmazeSNS do
+  before :each do
+    EventMachine::MockHttpRequest.reset_registry!
+    EventMachine::MockHttpRequest.reset_counts!
+    EventMachine::MockHttpRequest.pass_through_requests = false
+  end
+  
   
   describe 'in its initial state' do 
     it "should return the preconfigured host endpoint" do
@@ -28,11 +34,14 @@ describe AmazeSNS do
       a_logger.should_receive(:debug).with('some data')
       AmazeSNS.logger = a_logger
       AmazeSNS.logger.debug('some data')
+      AmazeSNS.logger = nil
     end
   end
   
   describe 'without the keys' do
     it 'should raise an ArgumentError if no keys are present' do
+      AmazeSNS.skey=''
+      AmazeSNS.akey=''
       lambda{
         AmazeSNS['test']
       }.should raise_error(AmazeSNS::CredentialError)

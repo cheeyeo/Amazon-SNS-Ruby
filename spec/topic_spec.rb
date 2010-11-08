@@ -3,7 +3,7 @@ require "em-http"
 
 
 describe Topic do
-  before do
+  before :each do
     
     AmazeSNS.akey = '123456'
     AmazeSNS.skey = '123456'
@@ -26,6 +26,10 @@ describe Topic do
     @topic = Topic.new('my_test_topic', 'arn:123456')
     @topic.attributes = @attrs_hash
     @topic.stub!(:attrs).and_return(@attrs_hash)
+    
+    EventMachine::MockHttpRequest.reset_registry!
+    EventMachine::MockHttpRequest.reset_counts!
+    EventMachine::MockHttpRequest.pass_through_requests = false
   end
   
   describe 'in its initial state' do
@@ -61,7 +65,7 @@ describe Topic do
       @time_stub = stub("Time")
     end
     
-    it 'should make a call to the API' do
+    it 'should send data to the API' do
       @time_stub.should_receive(:iso8601).and_return(123)
       Time.stub(:now).and_return(@time_stub)
       
