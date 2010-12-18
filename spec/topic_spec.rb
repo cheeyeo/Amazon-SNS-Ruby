@@ -311,7 +311,38 @@ describe Topic do
       
       
     end # end of topic attrs
+    
+    describe 'subscriptions to a topic' do
+      before :each do
+         @sub_data = <<-RESPONSE.gsub(/^ +/, '')
+           <SubscribeResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"> 
+             <SubscribeResult>
+               <SubscriptionArn>pending confirmation</SubscriptionArn> 
+              </SubscribeResult> 
+              <ResponseMetadata>
+                <RequestId>a169c740-3766-11df-8963-01868b7c937a</RequestId>
+              </ResponseMetadata>
+           </SubscribeResponse>
+          RESPONSE
 
+          @regexp = %r{/?Action=Subscribe}
+      end
+      
+      it 'should recive a pending confirmation on subscription' do
+        @time_stub.should_receive(:iso8601).and_return(123)
+        Time.stub(:now).and_return(@time_stub)
+        
+        stub_http_request(:get, @regexp).to_return(:body => @sub_data,
+                                                    :status => 200,
+                                                    :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close'})
+        
+        res = AmazeSNS["MyTopic"].subscribe(:endpoint => "example@amazon.com", :protocol => "email")
+        WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
+        WebMock.should have_requested(:get, @regexp).once
+        res.should == "pending confirmation"
+      end
+    end
+    
     describe 'deleting a topic' do
       before :each do
         @delete_data = <<-RESPONSE.gsub(/^ +/, '')
