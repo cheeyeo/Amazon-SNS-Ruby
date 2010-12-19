@@ -146,13 +146,13 @@ describe Topic do
       AmazeSNS.akey = '123456'
       AmazeSNS.skey = '123456'
       @time_stub = stub("Time")
-
+      @subscriptions = {}
       WebMock.reset!
       WebMock.disable_net_connect!
     end
     
-    describe 'listing topics' do
-      
+    context 'listing topics' do
+
       before :each do
         # store the request and response in webmock's own blocks for comparisons
         WebMock.after_request do |request, response|
@@ -177,7 +177,9 @@ describe Topic do
 
         @regexp = %r{/?Action=ListTopics}
       end
-
+      
+      use_vcr_cassette "topic/list", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
+      
       it 'should be able to get the data through the api' do
         @time_stub.should_receive(:iso8601).and_return(123)
         Time.stub(:now).and_return(@time_stub)
@@ -185,12 +187,12 @@ describe Topic do
         stub_http_request(:get, @regexp).to_return(:body => @list_data,
                                                     :status => 200,
                                                     :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close'})
-
+        
         EM.run{
          AmazeSNS.list_topics
          EM.stop
         }
-
+        
         WebMock.should have_requested(:get, %r{/?Action=ListTopics}).once
         WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
 
@@ -202,10 +204,10 @@ describe Topic do
       it 'should populate the topics hash' do
         AmazeSNS.topics.has_key?("My-Topic").should be_true
       end
-
+      
     end # end list topic spec
     
-    describe 'when creating a topic' do
+    context 'creating a topic' do
       before :each do
         
         @data = <<-RESPONSE.gsub(/^ +/, '')
@@ -221,6 +223,8 @@ describe Topic do
         
         @regexp = %r{/?Action=CreateTopic&Name=MyTopic}
       end
+      
+      use_vcr_cassette "topic/create", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should send data to the API' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -241,7 +245,7 @@ describe Topic do
       
     end # end create topic spec
     
-    describe 'getting a topic attrs' do
+    context 'getting a topic attrs' do
       before :each do
         @attrs_data = <<-RESPONSE.gsub(/^ +/, '')
           <GetTopicAttributesResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\">
@@ -282,6 +286,8 @@ describe Topic do
         @regexp = %r{/?Action=GetTopicAttributes}
       end
       
+      use_vcr_cassette "topic/attrs", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
+      
       it 'should make the API call' do
         @time_stub.should_receive(:iso8601).and_return(123)
         Time.stub(:now).and_return(@time_stub)
@@ -312,7 +318,7 @@ describe Topic do
       
     end # end of topic attrs
     
-    describe 'subscriptions to a topic' do
+    context 'subscribing to a topic' do
       before :each do
          @sub_data = <<-RESPONSE.gsub(/^ +/, '')
            <SubscribeResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"> 
@@ -327,6 +333,8 @@ describe Topic do
 
           @regexp = %r{/?Action=Subscribe}
       end
+      
+      use_vcr_cassette "topic/subscribe", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should recive a pending confirmation on subscription' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -343,7 +351,127 @@ describe Topic do
       end
     end
     
-    describe 'deleting a topic' do
+    context 'setting a topic attrs' do
+      before :each do
+        @data = <<-RESPONSE.gsub(/^ +/, '')
+          <SetTopicAttributesResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"> 
+            <ResponseMetadata>
+              <RequestId>a8763b99-33a7-11df-a9b7-05d48da6f042</RequestId> 
+            </ResponseMetadata>
+          </SetTopicAttributesResponse>
+        RESPONSE
+        
+        @regexp = %r{/?Action=SetTopicAttributes}
+      end
+      
+      use_vcr_cassette "topic/set_attrs", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
+      
+      it 'should set the topics attrs' do
+         @time_stub.should_receive(:iso8601).and_return(123)
+          Time.stub(:now).and_return(@time_stub)
+
+          stub_http_request(:get, @regexp).to_return(:body => @data,
+                                                      :status => 200,
+                                                      :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close','Status' => 200})
+          
+          AmazeSNS["MyTopic"].set_attrs({:name => "TopicArn", :value => 'lorem ipsum'})
+
+          WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
+          WebMock.should have_requested(:get, @regexp).once
+      end
+      
+      it 'should update the attributes hash' do
+        AmazeSNS["MyTopic"].attributes["TopicArn"].should == 'lorem ipsum'
+      end
+    end
+    
+    context 'subscriptions to a topic' do
+      before :each do
+        @sub_data = <<-RESPONSE.gsub(/^ +/, '')
+          <ListSubscriptionsByTopicResponse xmlns="http://sns.amazonaws.com/ doc/2010-03-31/">
+            <ListSubscriptionsByTopicResult>
+              <Subscriptions>
+                <member> 
+                  <TopicArn>arn:aws:sns:us-east-1:123456789012:MyTopic</TopicArn> 
+                  <Protocol>email</Protocol> 
+                  <SubscriptionArn>arn:aws:sns:us-east-1:123456789012:MyTopic:80289ba6-0fd4-4079-afb4-ce8c8260f0ca</SubscriptionArn> 
+                  <Owner>123456789012</Owner>
+                  <Endpoint>example@amazon.com</Endpoint> 
+                </member>
+              </Subscriptions> 
+              </ListSubscriptionsByTopicResult> 
+              <ResponseMetadata>
+                <RequestId>b9275252-3774-11df-9540-99d0768312d3</RequestId> 
+              </ResponseMetadata>
+            </ListSubscriptionsByTopicResponse>
+        RESPONSE
+        
+        @regexp = %r{/?Action=ListSubscriptionsByTopic}
+      end
+      
+      use_vcr_cassette "topic/subscriptions", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
+      
+      it 'should list the subscriptions for this topic' do
+        @time_stub.should_receive(:iso8601).and_return(123)
+        Time.stub(:now).and_return(@time_stub)
+        
+        stub_http_request(:get, @regexp).to_return(:body => @sub_data,
+                                                    :status => 200,
+                                                    :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close'})
+        
+        entry_hash = {
+                        "Owner" => "123456789012",
+                        "Endpoint" => "example@amazon.com",
+                        "Protocol" => "email",
+                        "TopicArn" => "arn:aws:sns:us-east-1:123456789012:MyTopic"
+                      }
+        subkey = "arn:aws:sns:us-east-1:123456789012:MyTopic:80289ba6-0fd4-4079-afb4-ce8c8260f0ca"
+        @subscriptions = AmazeSNS["MyTopic"].subscriptions
+        @subscriptions[subkey].should == entry_hash
+        @subscriptions[subkey]["Owner"].should == "123456789012"
+        @subscriptions[subkey]["Endpoint"].should == "example@amazon.com"
+        @subscriptions[subkey]["Protocol"].should == "email"
+        @subscriptions[subkey]["TopicArn"].should == "arn:aws:sns:us-east-1:123456789012:MyTopic"
+        
+        WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
+        WebMock.should have_requested(:get, @regexp).once
+      end
+    end
+    
+    context 'unsubscribing from a topic' do
+      
+      before :each do
+        @data = <<-RESPONSE.gsub(/^ +/, '')
+          <UnsubscribeResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"> 
+            <ResponseMetadata>
+              <RequestId>18e0ac39-3776-11df-84c0-b93cc1666b84</RequestId> 
+            </ResponseMetadata>
+          </UnsubscribeResponse>
+        RESPONSE
+        
+        @regexp = %r{/?Action=Unsubscribe}
+      end
+      
+      use_vcr_cassette "topic/unsubscribe", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
+      
+      it 'should be able to remove the subscriber' do
+        @time_stub.should_receive(:iso8601).and_return(123)
+        Time.stub(:now).and_return(@time_stub)
+        
+        stub_http_request(:get, @regexp).to_return(:body => @data,
+                                                    :status => 200,
+                                                    :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close'})
+
+        
+        AmazeSNS["MyTopic"].unsubscribe('arn:aws:sns:us-east-1:123456789012:MyTopic:80289ba6-0fd4-4079-afb4-ce8c8260f0ca')
+        
+        WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
+        WebMock.should have_requested(:get, @regexp).once
+      end
+      
+    end
+    
+    context 'deleting a topic' do
       before :each do
         @delete_data = <<-RESPONSE.gsub(/^ +/, '')
           <DeleteTopicResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/">
@@ -355,6 +483,8 @@ describe Topic do
         
         @regexp = %r{/?Action=DeleteTopic}
       end
+      
+      use_vcr_cassette "topic/delete", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should send data to the API' do
         @time_stub.should_receive(:iso8601).and_return(123)

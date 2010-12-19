@@ -79,7 +79,7 @@ string_to_sign = "GET
   end
   
   def call_user_success_handler
-    @options[:on_success].call(httpresponse) if options[:on_success].respond_to?(:call)
+    @options[:on_success].call(@httpresponse) if @options[:on_success].respond_to?(:call)
   end
   
   def error_callback

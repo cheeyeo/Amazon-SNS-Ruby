@@ -110,6 +110,7 @@ class Topic
   
   def set_attrs(opts)
     outcome = nil
+    #TODO: check format of opts to make sure they are compilant with API
     params = {
       'AttributeName' => "#{opts[:name]}",
       'AttributeValue' => "#{opts[:value]}",
@@ -125,6 +126,8 @@ class Topic
       generate_request(params) do |response|
         parsed_response = Crack::XML.parse(response.response) 
         outcome = parsed_response['SetTopicAttributesResponse']['ResponseMetadata']['RequestId']
+        # update the attributes hash if request is successful ...
+        self.attributes["#{opts[:name]}"] = "#{opts[:value]}" if response.response_header.status == 200
         EM.stop
       end
     }
