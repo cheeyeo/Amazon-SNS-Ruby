@@ -28,10 +28,8 @@ class AmazeSNS
     end
   end
   
-  
-  
+
   self.host = 'sns.us-east-1.amazonaws.com'
-  #self.logger ||= Logger.new($STDOUT)
   self.skey = ''
   self.akey=''
   self.topics ||= {}
@@ -47,15 +45,15 @@ class AmazeSNS
   def self.method_missing(id, *args, &blk)
     case(id.to_s)
     when /^list_(.*)/
-      send(:process_query, $1, &blk)
+      send(:process_query, $1, &Proc.new)
     when /^refresh_(.*)/
-      send(:process_query, $1, &blk)
+      send(:process_query, $1)
     else
       raise NoMethodError
     end
   end
   
-  def self.process_query(type, &blk)
+  def self.process_query(type,&prc)
     type = type.capitalize
     params = {
       'Action' => "List#{type}",
@@ -65,17 +63,18 @@ class AmazeSNS
       'AWSAccessKeyId' => @akey
     }
     
-    req_options={}
+    request = Request.new(params)
+    request.process
     
-    if (blk)
-      prc = blk
-    else
-      prc = default_prc
+    request.callback do |data|
+      yield data
     end
     
-    req_options[:on_success] = prc
-    deferrable = Request.new(params, req_options).process
-    deferrable
+    request.errback do |resp|
+      puts "ERROR - #{resp.inspect}"
+      EM.stop
+    end
+    
   end
   
   def self.default_prc
@@ -86,14 +85,18 @@ class AmazeSNS
     end
   end
   
+  def self.process_data(resp)
+    parsed_response = Crack::XML.parse(resp.response)
+    self.process_response(parsed_response)
+    EM.stop
+  end
+  
   def self.process_response(resp)
     kind = (resp.has_key?("ListTopicsResponse"))? "Topics" : "Subscriptions"
     cla = (resp.has_key?("ListTopicsResponse"))? "Topic" : "Subscription"
-    #p "KIND IS #{kind}"
-    
+
     result = resp["List#{kind}Response"]["List#{kind}Result"]["#{kind}"]
     if result.nil?
-      p "NO DATA FOUND"
       nil
     else
       results = result["member"]
@@ -120,11 +123,9 @@ class AmazeSNS
             when "Topic"
               @collection[label].arn = t["TopicArn"]
             when "Subscription"
-              #@collection[label] = t["TopicArn"]
               sub = Subscription.new(t)
               @collection[label] << sub unless  @collection[label].detect{|x| x.subarn == sub.subarn}
             end
-            #@collection[label].arn = t["TopicArn"]
           end
         end
       elsif (results.instance_of?(Hash))
@@ -136,8 +137,6 @@ class AmazeSNS
          when "Subscription"
            @collection[label] = Subscription.new(results)
          end
-         
-         #@collection[label] = Kernel.const_get("#{cla}").new(results)
       end
     else
       nil

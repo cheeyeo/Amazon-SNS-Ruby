@@ -13,11 +13,18 @@ class Topic
     @attributes = {}
   end
   
-  def generate_request(params,&blk)
-    req_options={}
-    req_options[:on_success] = blk if blk
-    deferrable = Request.new(params, req_options).process
-    deferrable
+  def generate_request(params)
+    request = Request.new(params)
+    request.process
+    
+    request.callback do |data|
+      yield data
+    end
+    
+    request.errback do |resp|
+      puts "ERROR - #{resp.inspect}"
+      EM.stop
+    end
   end
   
   # for running th EM loop w/o repetitions
@@ -81,7 +88,7 @@ class Topic
   def attrs
     outcome = nil
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Action' => 'GetTopicAttributes',
       'SignatureMethod' => 'HmacSHA256',
       'SignatureVersion' => 2,
@@ -139,7 +146,7 @@ class Topic
     raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
     res=''
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Endpoint' => "#{opts[:endpoint]}",
       'Protocol' => "#{opts[:protocol]}",
       'Action' => 'Subscribe',
@@ -184,9 +191,9 @@ class Topic
   
   # grabs list of subscriptions for this topic only
   def subscriptions
-    nh={}
+    res=nil
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Action' => 'ListSubscriptionsByTopic',
       'SignatureMethod' => 'HmacSHA256',
       'SignatureVersion' => 2,
@@ -200,23 +207,21 @@ class Topic
          arr = parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions']['member'] unless (parsed_response['ListSubscriptionsByTopicResponse']['ListSubscriptionsByTopicResult']['Subscriptions'].nil?)
 
          if !(arr.nil?) && (arr.instance_of?(Array))
-           #temp fix for now
-           nh = arr.inject({}) do |h,v|
-             key = v["SubscriptionArn"].to_s
-             value = v
-             h[key.to_s] = value
-             h
-           end
+           res = arr
          elsif !(arr.nil?) && (arr.instance_of?(Hash))
            # to deal with one subscription issue
+           nh={}
            key = arr["SubscriptionArn"]
            arr.delete("SubscriptionArn")
            nh[key.to_s] = arr
+           res = nh
+         else
+           res = []
          end
          EM.stop
        end
     }
-    nh
+    res
   end
   
   # The AddPermission action adds a statement to a topic's access control policy, granting access for the 
@@ -226,7 +231,7 @@ class Topic
     raise InvalidOptions unless ( !(opts.empty?) && opts.instance_of?(Hash) )
     res=''
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Label' => "#{opts[:label]}",
       'ActionName.member.1' => "#{opts[:action_name]}",
       'AWSAccountId.member.1' => "#{opts[:account_id]}",
@@ -252,7 +257,7 @@ class Topic
     raise InvalidOptions unless ( !(label.empty?) && label.instance_of?(String) )
     res=''
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Label' => "#{label}",
       'Action' => 'RemovePermission',
       'SignatureMethod' => 'HmacSHA256',
@@ -277,7 +282,7 @@ class Topic
     res=''
     params = {
       'Subject' => subject,
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       "Message" => "#{msg}",
       'Action' => 'Publish',
       'SignatureMethod' => 'HmacSHA256',

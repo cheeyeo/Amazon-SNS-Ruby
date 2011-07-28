@@ -18,9 +18,11 @@ Usage
     AmazeSNS.skey = 'your amazon aws secret key'
 
     AmazeSNS.akey = 'your amazon aws access key'
-
-    AmazeSNS['your_topic_name'] # creates a new Topic Object but not yet published
-    AmazeSNS['your_topic_name'].create # add new topic to local hash and to SNS
+    
+    # add new topic to local hash and to SNS
+    # You need to call create in order to access the ARN of the topic
+    AmazeSNS['your_topic_name'].create 
+    
     AmazeSNS['your_topic_name'].delete # removes it from both SNS and local hash
 
     AmazeSNS.logger = my_logger # set a logger for the response`
