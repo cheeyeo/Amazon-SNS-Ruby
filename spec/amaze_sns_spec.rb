@@ -150,7 +150,6 @@ describe AmazeSNS do
        @subs['My-Topic'].protocol.should == 'email'
        @subs['My-Topic'].topicarn.should == 'arn:aws:sns:us-east-1:698519295917:My-Topic'
        @subs['My-Topic'].endpoint.should == 'example@amazon.com'
-       @subs['My-Topic'].endpoint.should == 'example@amazon.com'
        @subs['My-Topic'].subarn.should == 'arn:aws:sns:us-east-1:123456789012:My-Topic:80289ba6- 0fd4-4079-afb4-ce8c8260f0ca'
        WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80})
     end
