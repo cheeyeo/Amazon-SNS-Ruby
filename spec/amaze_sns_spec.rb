@@ -1,15 +1,7 @@
-#require File.dirname(__FILE__) + '/spec_helper.rb'
-require File.expand_path('../spec_helper', __FILE__)
+require File.dirname(__FILE__) + '/spec_helper.rb'
 
-require 'em-http'
 
 describe AmazeSNS do
-  
-  def failed(http=nil)
-    EventMachine.stop
-    http ? fail(http.error) : fail
-  end
-  
   
   before :each do
     WebMock.reset!
