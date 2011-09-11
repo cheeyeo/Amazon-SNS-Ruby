@@ -77,68 +77,7 @@ describe Topic do
       @arn.should == "arn:aws:sns:us-east-1:365155214602:MyTopic"
       WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80})
     end
-
-    it 'should return a deferrable' do
-      t = Topic.new('MyTopic')
-
-      @time_stub.should_receive(:iso8601).and_return(123)
-      Time.stub(:now).and_return(@time_stub)
-
-      stub_http_request(:get, @regexp).to_return(:body => @data, :status => 200)
-
-      params = {
-        'Name' => "MyTopic",
-        'Action' => 'CreateTopic',
-        'SignatureMethod' => 'HmacSHA256',
-        'SignatureVersion' => 2,
-        'Timestamp' => Time.now.iso8601,
-        'AWSAccessKeyId' => AmazeSNS.akey
-       }
-
-      EM.run{
-        d = t.generate_request(params)
-        d.callback{
-          WebMock.should have_requested(:get, @regexp)
-          EM.stop
-        }
-        d.errback{
-          fail
-          EM.stop
-        }
-      }
-    end
-
-    it 'should return a deferrable which fails if exception occurs' do
-      t = Topic.new('MyTopic')
-
-      @time_stub.should_receive(:iso8601).and_return(123)
-      Time.stub(:now).and_return(@time_stub)
-      AmazeSNS.akey = ''
-
-      stub_http_request(:get, @regexp).to_return(:body => @data, :status => 403)
-
-      params = {
-        'Name' => "MyTopic",
-        'Action' => 'CreateTopic',
-        'SignatureMethod' => 'HmacSHA256',
-        'SignatureVersion' => 2,
-        'Timestamp' => Time.now.iso8601,
-        'AWSAccessKeyId' => AmazeSNS.akey
-       }
-
-      EM.run{
-        d = t.generate_request(params)
-        d.callback{
-          fail
-        }
-        d.errback{|error|
-          WebMock.should have_requested(:get, @regexp)
-          error.should be_kind_of(AuthorizationError)
-          EM.stop
-        }
-      }
-    end
-      
+  
   end
 
   describe 'operations through the API' do
@@ -151,61 +90,6 @@ describe Topic do
       WebMock.disable_net_connect!
     end
     
-    context 'listing topics' do
-
-      before :each do
-        # store the request and response in webmock's own blocks for comparisons
-        WebMock.after_request do |request, response|
-          @response = response
-          @request = request
-        end
-          
-        @list_data = <<-RESPONSE.gsub(/^ +/, '')
-          <ListTopicsResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"> 
-            <ListTopicsResult>
-              <Topics> 
-                <member>
-                  <TopicArn>arn:aws:sns:us-east-1:123456789012:My-Topic</TopicArn> 
-                </member>
-              </Topics> 
-            </ListTopicsResult> 
-            <ResponseMetadata>
-              <RequestId>3f1478c7-33a9-11df-9540-99d0768312d3</RequestId> 
-            </ResponseMetadata>
-        </ListTopicsResponse>
-        RESPONSE
-
-        @regexp = %r{/?Action=ListTopics}
-      end
-      
-      use_vcr_cassette "topic/list", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
-      
-      it 'should be able to get the data through the api' do
-        @time_stub.should_receive(:iso8601).and_return(123)
-        Time.stub(:now).and_return(@time_stub)
-        
-        stub_http_request(:get, @regexp).to_return(:body => @list_data,
-                                                    :status => 200,
-                                                    :headers => {'Content-Type' => 'text/xml', 'Connection' => 'close'})
-        
-        EM.run{
-         AmazeSNS.list_topics
-         EM.stop
-        }
-        
-        WebMock.should have_requested(:get, %r{/?Action=ListTopics}).once
-        WebMock.should have_requested(:get, %r{http://sns.us-east-1.amazonaws.com:80}).once
-
-        @request.to_s.split(" ")[1].should == "http://sns.us-east-1.amazonaws.com/?AWSAccessKeyId=123456&Action=ListTopics&Signature=ItTAjeexIPC43pHMZLCL7utnpK8j8AbTUZ3KGUSMzNc=&SignatureMethod=HmacSHA256&SignatureVersion=2&Timestamp=123"
-        @response.body.should == @list_data
-        @response.headers["Content-Type"].should == "text/xml"
-      end
-
-      it 'should populate the topics hash' do
-        AmazeSNS.topics.has_key?("My-Topic").should be_true
-      end
-      
-    end # end list topic spec
     
     context 'creating a topic' do
       before :each do
@@ -224,7 +108,6 @@ describe Topic do
         @regexp = %r{/?Action=CreateTopic&Name=MyTopic}
       end
       
-      use_vcr_cassette "topic/create", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should send data to the API' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -286,7 +169,6 @@ describe Topic do
         @regexp = %r{/?Action=GetTopicAttributes}
       end
       
-      use_vcr_cassette "topic/attrs", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should make the API call' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -334,7 +216,6 @@ describe Topic do
           @regexp = %r{/?Action=Subscribe}
       end
       
-      use_vcr_cassette "topic/subscribe", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should recive a pending confirmation on subscription' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -364,7 +245,6 @@ describe Topic do
         @regexp = %r{/?Action=SetTopicAttributes}
       end
       
-      use_vcr_cassette "topic/set_attrs", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should set the topics attrs' do
          @time_stub.should_receive(:iso8601).and_return(123)
@@ -409,7 +289,6 @@ describe Topic do
         @regexp = %r{/?Action=ListSubscriptionsByTopic}
       end
       
-      use_vcr_cassette "topic/subscriptions", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should list the subscriptions for this topic' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -452,7 +331,6 @@ describe Topic do
         @regexp = %r{/?Action=Unsubscribe}
       end
       
-      use_vcr_cassette "topic/unsubscribe", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should be able to remove the subscriber' do
         @time_stub.should_receive(:iso8601).and_return(123)
@@ -484,7 +362,6 @@ describe Topic do
         @regexp = %r{/?Action=DeleteTopic}
       end
       
-      use_vcr_cassette "topic/delete", {:record => :new_episodes, :match_requests_on => [:uri,:method,:body]}
       
       it 'should send data to the API' do
         @time_stub.should_receive(:iso8601).and_return(123)
