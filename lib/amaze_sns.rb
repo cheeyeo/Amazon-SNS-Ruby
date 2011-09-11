@@ -70,8 +70,8 @@ class AmazeSNS
       yield data
     end
     
-    request.errback do |resp|
-      puts "ERROR - #{resp.inspect}"
+    request.errback do |err|
+      #yield err
       EM.stop
     end
     
