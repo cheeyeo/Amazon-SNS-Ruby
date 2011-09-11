@@ -28,7 +28,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = Gem::Requirement.new(">= 1.8.6")
   s.rubygems_version = %q{1.8.7}
   s.summary = %q{Ruby gem for Amazon Simple Notification Service SNS}
-  s.test_files = [%q{spec/*.rb}, %q{spec/spec.opts}]
+  s.test_files = [%q{spec/amaze_sns_spec.rb}, %q{spec/em_http_request_spec_helper.rb}, %q{spec/request_spec.rb}, %q{spec/spec.opts}, %q{spec/spec_helper.rb}, %q{spec/subscription_spec.rb}, %q{spec/topic_spec.rb}]
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
