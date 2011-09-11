@@ -40,7 +40,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<ruby-hmac>, [">= 0.4.0"])
       s.add_runtime_dependency(%q<json>, [">= 1.4.3"])
       s.add_development_dependency(%q<rspec>, [">= 2.0"])
-      s.add_development_dependency(%q<webmock>, ["~> 1.6.0.pre"])
+      s.add_development_dependency(%q<webmock>, ["= 1.7.6"])
     else
       s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
       s.add_dependency(%q<em-http-request>, [">= 0.2.8"])
@@ -48,7 +48,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<ruby-hmac>, [">= 0.4.0"])
       s.add_dependency(%q<json>, [">= 1.4.3"])
       s.add_dependency(%q<rspec>, [">= 2.0"])
-      s.add_dependency(%q<webmock>, ["~> 1.6.0.pre"])
+      s.add_dependency(%q<webmock>, ["= 1.7.6"])
     end
   else
     s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
@@ -57,7 +57,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<ruby-hmac>, [">= 0.4.0"])
     s.add_dependency(%q<json>, [">= 1.4.3"])
     s.add_dependency(%q<rspec>, [">= 2.0"])
-    s.add_dependency(%q<webmock>, ["~> 1.6.0.pre"])
+    s.add_dependency(%q<webmock>, ["= 1.7.6"])
   end
 end
 

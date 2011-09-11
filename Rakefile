@@ -19,7 +19,8 @@ begin
     gemspec.add_development_dependency "rspec", ">= 2.0"
     gemspec.add_development_dependency "webmock", "1.7.6"
     gemspec.files = FileList['lib/*.rb', 'lib/**/*.rb']
-    gemspec.test_files = ['spec/*.rb', 'spec/spec.opts']
+    #gemspec.test_files = ['spec/*.rb', 'spec/spec.opts']
+    gemspec.test_files = `git ls-files -- {test,spec,features}/*`.split("\n")
   end
   Jeweler::GemcutterTasks.new
   
