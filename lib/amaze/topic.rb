@@ -305,7 +305,7 @@ class Topic
     raise InvalidOptions unless ( !(token.empty?) && token.instance_of?(String) )
     arr=[]
     params = {
-      'TopicArn' => "#{arn}",
+      'TopicArn' => "#{@arn}",
       'Token' => "#{token}",
       'Action' => 'ConfirmSubscription',
       'SignatureMethod' => 'HmacSHA256',

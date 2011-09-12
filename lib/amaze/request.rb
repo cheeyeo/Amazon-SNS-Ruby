@@ -1,6 +1,5 @@
 require "rubygems"
 require 'crack/xml'
-require 'ruby-debug'
 
 require File.dirname(__FILE__) + "/helpers"
 require File.dirname(__FILE__) + "/exceptions"
