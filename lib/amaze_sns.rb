@@ -1,12 +1,16 @@
 autoload 'Logger', 'logger'
 
-require File.dirname(__FILE__) + "/amaze/topic"
-require File.dirname(__FILE__) + "/amaze/subscription"
-require File.dirname(__FILE__) + "/amaze/helpers"
-require File.dirname(__FILE__) + "/amaze/request"
-require File.dirname(__FILE__) + "/amaze/exceptions"
+$LOAD_PATH.unshift File.dirname(__FILE__)
+
 require "eventmachine"
+require 'em-http'
 require 'crack/xml'
+require "amaze/topic"
+require "amaze/subscription"
+require "amaze/helpers"
+require "amaze/request"
+require "amaze/exceptions"
+
 
 class AmazeSNS
   
@@ -17,7 +21,8 @@ class AmazeSNS
   end
   
   class << self
-    attr_accessor :host, :topics, :skey, :akey, :subscriptions, :logger
+    attr_accessor :host, :topics, :skey, :akey, :subscriptions, :logger, :api_version,
+                  :signature_version, :signature_method
     
     def logger
       @logger ||= begin
@@ -32,6 +37,10 @@ class AmazeSNS
   self.host = 'sns.us-east-1.amazonaws.com'
   self.skey = ''
   self.akey=''
+  self.api_version = '2010-03-31'
+  self.signature_version = 2
+  self.signature_method = 'HmacSHA256'
+  
   self.topics ||= {}
   self.subscriptions ||= {}
   
@@ -55,13 +64,7 @@ class AmazeSNS
   
   def self.process_query(type,&prc)
     type = type.capitalize
-    params = {
-      'Action' => "List#{type}",
-      'SignatureMethod' => 'HmacSHA256',
-      'SignatureVersion' => 2,
-      'Timestamp' => Time.now.iso8601, #Time.now.iso8601 makes tests fail
-      'AWSAccessKeyId' => @akey
-    }
+    params = { 'Action' => "List#{type}"}
     
     request = Request.new(params)
     request.process
@@ -71,7 +74,6 @@ class AmazeSNS
     end
     
     request.errback do |err|
-      #yield err
       EM.stop
     end
     

@@ -1,24 +1,15 @@
-require "rubygems"
-require 'crack/xml'
-
-require File.dirname(__FILE__) + "/helpers"
-require File.dirname(__FILE__) + "/exceptions"
-
-require 'em-http'
-
-
 class Request
   include EM::Deferrable
   
   attr_accessor :params, :httpresponse
   
   def initialize(params)
-    @params = params
+    @params = essential_params.merge(params)
   end
   
   def process
     query_string = canonical_querystring(@params)
-
+    
 string_to_sign = "GET
 #{AmazeSNS.host}
 /
@@ -79,5 +70,16 @@ string_to_sign = "GET
     raise AmazeSNSRuntimeError.new("A runtime error has occured: status code: #{@httpresponse.response_header.status}")
   end
   
+  private
+  
+    def essential_params
+      {
+        'SignatureMethod' => AmazeSNS.signature_method,
+        'SignatureVersion' => AmazeSNS.signature_version,
+        'Timestamp' => Time.now.iso8601, #Time.now.iso8601 makes tests fail
+        'AWSAccessKeyId' => AmazeSNS.akey,
+        'Version' => AmazeSNS.api_version
+      }
+    end
   
 end
