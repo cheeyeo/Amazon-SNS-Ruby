@@ -6,7 +6,7 @@ require "eventmachine"
 require 'em-http'
 require 'crack/xml'
 require "amaze/topic"
-require "amaze/subscription"
+require "amaze/sns_subscription"
 require "amaze/helpers"
 require "amaze/request"
 require "amaze/exceptions"
@@ -116,7 +116,7 @@ class AmazeSNS
               @collection[label] = Topic.new(label,t["TopicArn"])
             when "Subscription"
               @collection[label] = Array.new
-              @collection[label] << Subscription.new(t)
+              @collection[label] << SNSSubscription.new(t)
             end
             
             #@collection[label] = Kernel.const_get("#{cla}").new(t) # t is a hash
@@ -125,7 +125,7 @@ class AmazeSNS
             when "Topic"
               @collection[label].arn = t["TopicArn"]
             when "Subscription"
-              sub = Subscription.new(t)
+              sub = SNSSubscription.new(t)
               @collection[label] << sub unless  @collection[label].detect{|x| x.subarn == sub.subarn}
             end
           end
@@ -137,7 +137,7 @@ class AmazeSNS
          when "Topic"
            @collection[label] = Topic.new(label, results["TopicArn"])
          when "Subscription"
-           @collection[label] = Subscription.new(results)
+           @collection[label] = SNSSubscription.new(results)
          end
       end
     else

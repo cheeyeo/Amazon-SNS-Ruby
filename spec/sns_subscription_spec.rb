@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
 
-describe Subscription do
+describe SNSSubscription do
   before :each do
     hsh = {
       "Owner" => '123456789012',
@@ -9,11 +9,11 @@ describe Subscription do
       "Endpoint" => 'example@amazon.com',
       "SubscriptionArn" => 'arn:aws:sns:us-east-1:123456789012:My-Topic:80289ba6- 0fd4-4079-afb4-ce8c8260f0ca'
     }
-    @subscription = Subscription.new(hsh)  
+    @subscription = SNSSubscription.new(hsh)  
   end
   
   it 'should be an instance of subscription' do
-    @subscription.should be_instance_of Subscription
+    @subscription.should be_instance_of SNSSubscription
   end
   
   it 'should have attributes that are accessible' do
