@@ -145,7 +145,7 @@ describe AmazeSNS do
          end
        }
        
-       @subs['My-Topic'].should be_instance_of Subscription
+       @subs['My-Topic'].should be_instance_of SNSSubscription
        @subs['My-Topic'].owner.should == '123456789012'
        @subs['My-Topic'].protocol.should == 'email'
        @subs['My-Topic'].topicarn.should == 'arn:aws:sns:us-east-1:698519295917:My-Topic'

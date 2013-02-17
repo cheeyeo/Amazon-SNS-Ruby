@@ -1,4 +1,4 @@
-class Subscription
+class SNSSubscription
   
   attr_accessor :owner, :protocol, :topicarn, :endpoint, :subarn
   
